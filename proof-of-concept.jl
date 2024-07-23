@@ -9,7 +9,7 @@ using Plots
 # Wrappers to different LU algorithms and implementations
 function umfpack_a(A)
     t = @elapsed  L, U, p = lu(A)
-    err =  norm(A[p,:] - L*U, 1)
+    err = norm(A[p,:] - L*U, 1)
     return t, err
 end
 
@@ -23,7 +23,7 @@ end
 # Define metrix names, sizes, and algorithms to explore
 
 # All matrices
-#mat_names =  ["baart","binomial","blur","cauchy","chebspec","chow","circul",
+# mat_names =  ["baart","binomial","blur","cauchy","chebspec","chow","circul",
 #              "clement","companion","deriv2","dingdong","erdrey","fiedler",
 #              "forsythe","foxgood","frank","gilbert","golub","gravity","grcar",
 #              "hadamard","hankel","heat","hilb","invhilb","invol","kahan","kms",
@@ -36,27 +36,26 @@ end
 # Problematic matrices: interface issues (e.g. dim^2 instead of dim), out of memory, singular value exception.
 # mat_names = ["binomial", "blur", "poisson", "chow", "erdrey", "invol","neumann",
 #              "parallax","pascal","rosser",,"vand", "smallworld","gilbert",
-#              "hadamard","heat","invhilb", "wathen"] 
+#              "hadamard","heat","invhilb", "wathen", "chebspec","phillips",] 
 
 # Matrices
-mat_names = ["baart", "cauchy", "chebspec", "circul", "clement", "companion", 
-             "deriv2", "dingdong", "fiedler",
-             "forsythe", "foxgood","frank","golub","gravity","grcar",
-             "hankel","hilb","kahan","kms",
-             "lehmer", "lotkin","magic","minij","moler","oscillate",
-             "parter","pei","phillips","prolate",
-             "randcorr","rando","randsvd","rohess","sampling","shaw",
-             "spikes","toeplitz","tridiag","triw","ursell",
+mat_names = ["baart", "cauchy",  "circul", "clement", "companion", 
+             "deriv2", "dingdong", "fiedler", "forsythe", "foxgood","frank",
+             "golub","gravity","grcar", "hankel","hilb","kahan","kms", "lehmer",
+             "lotkin","magic","minij","moler","oscillate", "parter", "pei", 
+             "prolate", "randcorr","rando","randsvd","rohess",
+             "sampling","shaw", "spikes","toeplitz","tridiag","triw","ursell",
              "wilkinson","wing"]
+
 # Matrix sizes
-ns = [900]
+ns = [10, 100, 1000]
 
 # Algorithms
 algs = [umfpack_a, klu_a]
 
 # Evaluate
 df = DataFrame(mat_name = String[], n = Int[], algorithm = String[], 
-               t = Float64[], err = Float64[])
+               time = Float64[], error = Float64[])
 for mat_name in mat_names
     for n in ns
         A = matrixdepot(mat_name, n)
