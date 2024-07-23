@@ -1,2 +1,2 @@
-# SmartSolve
-Proof of concept
+# SmartSolve. Proof of concept.
+
