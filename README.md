@@ -1,0 +1,2 @@
+# SmartSolve
+Proof of concept
