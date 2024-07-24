@@ -7,7 +7,7 @@ using DataFrames
 using CSV
 using PlotlyJS
 
-# # Smart discovery
+# Smart discovery ##############################################################
 
 # Define wrappers to different LU algorithms and implementations
 function umfpack_a(A)
@@ -30,10 +30,10 @@ mat_names = ["baart", "cauchy",  "circul", "clement", "companion",
              "lotkin","magic","minij","moler","oscillate", "parter", "pei", 
              "prolate", "randcorr","rando","randsvd","rohess",
              "sampling","shaw", "spikes","toeplitz","tridiag","triw","ursell",
-             "wilkinson","wing"]
+             "wilkinson","wing", "rosser", "hadamard", "phillips"]
 
 # Define matrix sizes
-ns = [10, 100, 1000]
+ns = [2^6, 2^8, 2^10]
 
 # Define number of experiments
 n_experiments = 5
@@ -59,7 +59,7 @@ for i in 1:n_experiments
     end
 end
 
-# # Show and save discovery process results
+# Show and save discovery process results ######################################
 
 df
 CSV.write("smartsolve.csv", df)
@@ -73,7 +73,11 @@ for n in ns
                        df′ = @views df[(df.mat_name .== mat_name) .&&
                                        (df.n .== n) .&& 
                                        (df.algorithm .== a), :];
-                       minimum(df′.time)
+                       if length(df′.time) > 0
+                          minimum(df′.time)
+                       else
+                          0.0
+                       end
                    )
                    for mat_name in reverse(mat_names)
                  ];
@@ -87,7 +91,7 @@ for n in ns
 end
 
 
-# # Generate smart choice model
+# Generate smart choice model ##################################################
 
 #TODO: ML model here
 
@@ -114,8 +118,8 @@ end
 #              "smallworld","spikes","toeplitz","tridiag","triw","ursell","vand",
 #              "wathen","wilkinson","wing"]
 
-# Problematic matrices: interface issues (e.g. dim^2 instead of dim), out of memory, singular value exception.
-# mat_names = ["binomial", "blur", "poisson", "chow", "erdrey", "invol","neumann",
-#              "parallax","pascal","rosser",,"vand", "smallworld","gilbert",
-#              "hadamard","heat","invhilb", "wathen", "chebspec","phillips",] 
+#mat_names = ["chow", "erdrey", "invol", "neumann", "parallax", "pascal", "vand",
+#             "smallworld", "gilbert", "chebspec"] # singular exception
+#mat_names = ["binomial", "wathen", "invhilb"] # overflow?
+#mat_names = ["blur", "poisson", "heat"] # interface
 
