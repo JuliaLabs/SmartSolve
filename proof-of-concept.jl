@@ -10,24 +10,22 @@ using PlotlyJS
 # Smart discovery ##############################################################
 
 # Define wrappers to different LU algorithms and implementations
-#function umfpack_a(A)
-#    t = @elapsed  L, U, p = lu(A)
-#    err = norm(A[p,:] - L*U, 1)
-#    return t, err
-#end
-#function klu_a(A)
-#    sA = @views sparse(A)
-#    t = @elapsed K = klu(sA)
-#    err = norm(K.L * K.U + K.F - K.Rs .\ A[K.p, K.q], 1)
-#    return t, err
-#end
 function umfpack_a(A)
-    t = @elapsed lu(A)
-    return t, 0.0
+    if A isa Matrix
+        t = @elapsed L, U, p = lu(A)
+        err = norm(A[p,:] - L*U, 1)
+    else # A isa SparseMatrixCSC
+        t = @elapsed res = lu(A)
+        b = rand(size(A,1))
+        x = res \ b
+        err = norm(A * x - b, 1)
+    end
+    return t, err
 end
 function klu_a(A)
-    t = @elapsed klu(sparse(A))
-    return t, 0.0
+    t = @elapsed K = klu(sparse(A))
+    err = norm(K.L * K.U + K.F - K.Rs .\ A[K.p, K.q], 1)
+    return t, err
 end
 algs = [umfpack_a, klu_a]
 
@@ -69,7 +67,7 @@ for i in 1:n_experiments
                     t, err = a(A)
                     push!(df, [mat_name, n, "$(nameof(a))", t, err])
                 catch e
-                    println("$(mat_name),$n, $(nameof(a)): an error occurred: $e")
+                    println("$e. $(mat_name), $n, $(nameof(a))")
                 end
             end
             GC.gc()
@@ -107,7 +105,7 @@ function plot_benchmark(df, ns, algs, mat_names, xaxis_type)
         relayout!(p, barmode="group",
                      xaxis_type=xaxis_type,
                      xaxis_title="Time [s]",
-                     yaxis_title="Matrix name, size $(n)x$(n)")
+                     yaxis_title="Matrix pattern, size $(n)x$(n)")
         savefig(p, "algorithms_times_$(n)_$(xaxis_type).png", width=600, height=800, scale=1.5)
     end
 end
@@ -130,7 +128,7 @@ for mat_name in mat_names
     end
 end
 
-############
+################################################################################
 
 # All matrices
 # mat_names =  ["baart","binomial","blur","cauchy","chebspec","chow","circul",
@@ -147,8 +145,21 @@ end
 #mat_names = ["binomial", "wathen", "invhilb"] # overflow?
 
 
-#A = matrixdepot("blur", 2^7)
-#@elapsed lu(A)
-#@elapsed klu(sparse(A))
-#@elapsed lu(A)
-#@elapsed klu(sparse(A))
+#A = matrixdepot("blur", 2^5)
+#b = rand(2^10)
+#t = @elapsed res = lu(Matrix(A))
+#x = res \ b
+#err = norm(A * x - b, 1)
+#t = @elapsed res = lu(A)
+#x = res \ b
+#err = norm(A * x - b, 1)
+
+#A = matrixdepot("rosser", 2^10)
+#b = rand(2^10)
+#t = @elapsed res = klu(sparse(A))
+#x = res \ b
+#err = norm(A * x - b, 1)
+#t = @elapsed res = klu(A)
+#x = res \ b
+#err = norm(A * x - b, 1)
+
