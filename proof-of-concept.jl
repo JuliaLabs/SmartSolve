@@ -32,8 +32,8 @@ end
 algs = [umfpack_a, klu_a]
 
 # Define matrices
-mat_names = ["blur", "poisson", "heat", "rosser", "companion", "forsythe",
-             "grcar", "triw", "baart", "cauchy", "circul", "clement", "deriv2",
+mat_names = ["rosser", "companion", "forsythe", "grcar", "triw", "blur", "poisson",
+             "heat", "baart", "cauchy", "circul", "clement", "deriv2",
              "dingdong", "fiedler",  "foxgood","frank", "golub","gravity",
              "hankel","hilb","kahan","kms", "lehmer", "lotkin","magic", "minij",
              "moler","oscillate", "parter", "pei", "prolate", "randcorr",
@@ -42,10 +42,9 @@ mat_names = ["blur", "poisson", "heat", "rosser", "companion", "forsythe",
 
 # Define matrix sizes
 ns = [2^6, 2^8, 2^10, 2^12]
-ns = [2^6, 2^8, 2^10]
 
 # Define number of experiments
-n_experiments = 3
+n_experiments = 5
 
 # Generate smart choice database through smart discovery
 df = DataFrame(mat_name = String[], n = Int[], algorithm = String[], 
@@ -79,58 +78,42 @@ for i in 1:n_experiments
 end
 
 
-## Generate smart choice database trough smart discovery
-#df = DataFrame(mat_name = String[], n = Int[], algorithm = String[], 
-#               time = Float64[], error = Float64[])
-#for i in 1:n_experiments
-#    println("Experiment $i")
-#    for mat_name in mat_names
-#        for n in ns
-#            A = matrixdepot(mat_name, n)
-#            for a in algs
-#                try
-#                    t, err = a(A)
-#                    push!(df, [mat_name, n, "$(nameof(a))", t, err])
-#                catch e
-#                    println("$(mat_name),$n, $(nameof(a)): an error occurred: $e")
-#                end
-#            end
-#            GC.gc()
-#        end
-#    end
-#end
-
 # Show and save discovery process results ######################################
 
 df
 CSV.write("smartsolve.csv", df)
 
-algs_str = ["$(nameof(a))" for a in algs]
-for n in ns
-    p = plot(
-        [(
-            ts = [
-                   (
-                       df′ = @views df[(df.mat_name .== mat_name) .&&
-                                       (df.n .== n) .&& 
-                                       (df.algorithm .== a), :];
-                       if length(df′.time) > 0
-                          minimum(df′.time)
-                       else
-                          0.0
-                       end
-                   )
-                   for mat_name in reverse(mat_names)
-                 ];
-             bar(name=a, x=ts, y=reverse(mat_names), orientation="h")
-            ) for a in algs_str
-         ])
-    relayout!(p, barmode="group",
-                 xaxis_type="log",
-                 xaxis_title="Time [s]",
-                 yaxis_title="Matrix name, size $(n)x$(n)")
-    savefig(p, "algorithms_times_$n.png", width=600, height=800, scale=1.5)
+function plot_benchmark(df, ns, algs, mat_names, xaxis_type)
+    algs_str = ["$(nameof(a))" for a in algs]
+    for n in ns
+        p = plot(
+            [(
+                ts = [
+                       (
+                           df′ = @views df[(df.mat_name .== mat_name) .&&
+                                           (df.n .== n) .&& 
+                                           (df.algorithm .== a), :];
+                           if length(df′.time) > 0
+                              minimum(df′.time)
+                           else
+                              0.0
+                           end
+                       )
+                       for mat_name in reverse(mat_names)
+                     ];
+                 bar(name=a, x=ts, y=reverse(mat_names), orientation="h")
+                ) for a in algs_str
+             ])
+        relayout!(p, barmode="group",
+                     xaxis_type=xaxis_type,
+                     xaxis_title="Time [s]",
+                     yaxis_title="Matrix name, size $(n)x$(n)")
+        savefig(p, "algorithms_times_$(n)_$(xaxis_type).png", width=600, height=800, scale=1.5)
+    end
 end
+
+plot_benchmark(df, ns, algs, mat_names, "log")
+plot_benchmark(df, ns, algs, mat_names[1:8], "linear")
 
 
 # Generate smart choice model ##################################################
@@ -163,3 +146,9 @@ end
 #             "smallworld", "gilbert", "chebspec"] # singular exception
 #mat_names = ["binomial", "wathen", "invhilb"] # overflow?
 
+
+#A = matrixdepot("blur", 2^7)
+#@elapsed lu(A)
+#@elapsed klu(sparse(A))
+#@elapsed lu(A)
+#@elapsed klu(sparse(A))
