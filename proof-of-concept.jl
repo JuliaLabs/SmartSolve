@@ -10,42 +10,61 @@ using PlotlyJS
 # Smart discovery ##############################################################
 
 # Define wrappers to different LU algorithms and implementations
+#function umfpack_a(A)
+#    t = @elapsed  L, U, p = lu(A)
+#    err = norm(A[p,:] - L*U, 1)
+#    return t, err
+#end
+#function klu_a(A)
+#    sA = @views sparse(A)
+#    t = @elapsed K = klu(sA)
+#    err = norm(K.L * K.U + K.F - K.Rs .\ A[K.p, K.q], 1)
+#    return t, err
+#end
 function umfpack_a(A)
-    t = @elapsed  L, U, p = lu(A)
-    err = norm(A[p,:] - L*U, 1)
-    return t, err
+    t = @elapsed lu(A)
+    return t, 0.0
 end
 function klu_a(A)
-    sA = @views sparse(A)
-    t = @elapsed K = klu(sA)
-    err = norm(K.L * K.U + K.F - K.Rs .\ A[K.p, K.q], 1)
-    return t, err
+    t = @elapsed klu(sparse(A))
+    return t, 0.0
 end
 algs = [umfpack_a, klu_a]
 
 # Define matrices
-mat_names = ["baart", "cauchy",  "circul", "clement", "companion", 
-             "deriv2", "dingdong", "fiedler", "forsythe", "foxgood","frank",
-             "golub","gravity","grcar", "hankel","hilb","kahan","kms", "lehmer",
-             "lotkin","magic","minij","moler","oscillate", "parter", "pei", 
-             "prolate", "randcorr","rando","randsvd","rohess",
-             "sampling","shaw", "spikes","toeplitz","tridiag","triw","ursell",
-             "wilkinson","wing", "rosser", "hadamard", "phillips"]
+mat_names = ["blur", "poisson", "heat", "rosser", "companion", "forsythe",
+             "grcar", "triw", "baart", "cauchy", "circul", "clement", "deriv2",
+             "dingdong", "fiedler",  "foxgood","frank", "golub","gravity",
+             "hankel","hilb","kahan","kms", "lehmer", "lotkin","magic", "minij",
+             "moler","oscillate", "parter", "pei", "prolate", "randcorr",
+             "rando","randsvd","rohess", "sampling","shaw", "spikes", "toeplitz",
+             "tridiag","ursell", "wilkinson","wing", "hadamard", "phillips"]
 
 # Define matrix sizes
+ns = [2^6, 2^8, 2^10, 2^12]
 ns = [2^6, 2^8, 2^10]
 
 # Define number of experiments
-n_experiments = 5
+n_experiments = 3
 
-# Generate smart choice database trough smart discovery
+# Generate smart choice database through smart discovery
 df = DataFrame(mat_name = String[], n = Int[], algorithm = String[], 
                time = Float64[], error = Float64[])
 for i in 1:n_experiments
     println("Experiment $i")
     for mat_name in mat_names
         for n in ns
-            A = matrixdepot(mat_name, n)
+            # Generate matrix
+            if mat_name in ["blur", "poisson"]
+                n′ = convert(Int, sqrt(n))
+            else
+                n′ = n
+            end
+            A = matrixdepot(mat_name, n′)
+            if size(A) != (n, n)
+                println("Check matrix size: $(mat_name), ($n, $n) vs $(size(A))")
+            end
+            # Evaluate different algorithms
             for a in algs
                 try
                     t, err = a(A)
@@ -58,6 +77,28 @@ for i in 1:n_experiments
         end
     end
 end
+
+
+## Generate smart choice database trough smart discovery
+#df = DataFrame(mat_name = String[], n = Int[], algorithm = String[], 
+#               time = Float64[], error = Float64[])
+#for i in 1:n_experiments
+#    println("Experiment $i")
+#    for mat_name in mat_names
+#        for n in ns
+#            A = matrixdepot(mat_name, n)
+#            for a in algs
+#                try
+#                    t, err = a(A)
+#                    push!(df, [mat_name, n, "$(nameof(a))", t, err])
+#                catch e
+#                    println("$(mat_name),$n, $(nameof(a)): an error occurred: $e")
+#                end
+#            end
+#            GC.gc()
+#        end
+#    end
+#end
 
 # Show and save discovery process results ######################################
 
@@ -85,6 +126,7 @@ for n in ns
             ) for a in algs_str
          ])
     relayout!(p, barmode="group",
+                 xaxis_type="log",
                  xaxis_title="Time [s]",
                  yaxis_title="Matrix name, size $(n)x$(n)")
     savefig(p, "algorithms_times_$n.png", width=600, height=800, scale=1.5)
@@ -117,9 +159,7 @@ end
 #              "randcorr","rando","randsvd","rohess","rosser","sampling","shaw",
 #              "smallworld","spikes","toeplitz","tridiag","triw","ursell","vand",
 #              "wathen","wilkinson","wing"]
-
 #mat_names = ["chow", "erdrey", "invol", "neumann", "parallax", "pascal", "vand",
 #             "smallworld", "gilbert", "chebspec"] # singular exception
 #mat_names = ["binomial", "wathen", "invhilb"] # overflow?
-#mat_names = ["blur", "poisson", "heat"] # interface
 
