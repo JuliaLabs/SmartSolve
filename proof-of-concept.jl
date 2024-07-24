@@ -4,7 +4,8 @@ using KLU
 using SparseArrays
 using Interpolations
 using DataFrames
-using Plots
+using CSV
+using PlotlyJS
 
 # # Smart discovery
 
@@ -34,29 +35,57 @@ mat_names = ["baart", "cauchy",  "circul", "clement", "companion",
 # Define matrix sizes
 ns = [10, 100, 1000]
 
+# Define number of experiments
+n_experiments = 5
 
-# # Generate smart choice database trough smart discovery
+# Generate smart choice database trough smart discovery
 df = DataFrame(mat_name = String[], n = Int[], algorithm = String[], 
                time = Float64[], error = Float64[])
-for mat_name in mat_names
-    for n in ns
-        A = matrixdepot(mat_name, n)
-        for a in algs
-            try
-                t, err = a(A)
-                push!(df, [mat_name, n, "$(nameof(a))", t, err])
-            catch e
-                println("$(mat_name),$n, $(nameof(a)): an error occurred: $e")
+for i in 1:n_experiments
+    println("Experiment $i")
+    for mat_name in mat_names
+        for n in ns
+            A = matrixdepot(mat_name, n)
+            for a in algs
+                try
+                    t, err = a(A)
+                    push!(df, [mat_name, n, "$(nameof(a))", t, err])
+                catch e
+                    println("$(mat_name),$n, $(nameof(a)): an error occurred: $e")
+                end
             end
+            GC.gc()
         end
-        GC.gc()
     end
 end
 
-# # Show discovery process results
-df
+# # Show and save discovery process results
 
-# TODO: Plot here
+df
+CSV.write("smartsolve.csv", df)
+
+algs_str = ["$(nameof(a))" for a in algs]
+for n in ns
+    p = plot(
+        [(
+            ts = [
+                   (
+                       df′ = @views df[(df.mat_name .== mat_name) .&&
+                                       (df.n .== n) .&& 
+                                       (df.algorithm .== a), :];
+                       minimum(df′.time)
+                   )
+                   for mat_name in reverse(mat_names)
+                 ];
+             bar(name=a, x=ts, y=reverse(mat_names), orientation="h")
+            ) for a in algs_str
+         ])
+    relayout!(p, barmode="group",
+                 xaxis_title="Time [s]",
+                 yaxis_title="Matrix name, size $(n)x$(n)")
+    savefig(p, "algorithms_times_$n.png", width=600, height=800, scale=1.5)
+end
+
 
 # # Generate smart choice model
 
