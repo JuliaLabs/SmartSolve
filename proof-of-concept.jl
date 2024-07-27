@@ -1,6 +1,7 @@
 using MatrixDepot
 using LinearAlgebra
 using KLU
+using SuperLU
 using SparseArrays
 using Interpolations
 using DataFrames
@@ -27,15 +28,22 @@ function klu_a(A)
     err = norm(K.L * K.U + K.F - K.Rs .\ A[K.p, K.q], 1)
     return t, err
 end
-algs = [umfpack_a, klu_a]
+function splu_a(A)
+    t = @elapsed res = splu(sparse(A))
+    b = rand(size(A,1))
+    x = res \ b
+    err = norm(A * x - b, 1) 
+    return t, err
+end
+algs = [umfpack_a, klu_a, splu_a]
 
 # Define matrices
 mat_names = ["rosser", "companion", "forsythe", "grcar", "triw", "blur", "poisson",
-             "heat", "baart", "cauchy", "circul", "clement", "deriv2",
-             "dingdong", "fiedler",  "foxgood","frank", "golub","gravity",
-             "hankel","hilb","kahan","kms", "lehmer", "lotkin","magic", "minij",
-             "moler","oscillate", "parter", "pei", "prolate", "randcorr",
-             "rando","randsvd","rohess", "sampling","shaw", "spikes", "toeplitz",
+             "heat", "kahan", "frank", "rohess", "baart", "cauchy", "circul",
+             "clement", "deriv2", "dingdong", "fiedler", "foxgood", "golub","
+             gravity", "hankel","hilb", "kms", "lehmer", "lotkin","magic",
+             "minij", "moler","oscillate", "parter", "pei", "prolate", "randcorr",
+             "rando","randsvd","sampling","shaw", "spikes", "toeplitz",
              "tridiag","ursell", "wilkinson","wing", "hadamard", "phillips"]
 
 # Define matrix sizes
@@ -113,10 +121,15 @@ end
 plot_benchmark(df, ns, algs, mat_names, "log")
 plot_benchmark(df, ns, algs, mat_names[1:8], "linear")
 
+for mat_name in mat_names[1:8]
+    A = sparse(matrixdepot(mat_name, 2^6))
+    println(A)
+end 
 
 # Generate smart choice model ##################################################
 
-#TODO: ML model here
+##TODO: ML model here
+
 
 smart_choice = Dict()
 for mat_name in mat_names
@@ -162,4 +175,41 @@ end
 #t = @elapsed res = klu(A)
 #x = res \ b
 #err = norm(A * x - b, 1)
+
+#using Flux
+
+#n_algs = 2 #length(algs)
+#m = Chain(Conv((3,3), 1 => n_algs), GlobalMaxPool());
+#n = 100
+#m(rand32(n, n, 1, 1))
+
+## Loss function and optimizer
+#loss(x, y) = Flux.crossentropy(model(x), y)
+#opt = ADAM()
+
+#y_onehot = Flux.onehotbatch(algs, 0:1)
+
+#for epoch in 1:10
+#    for mat_name in mat_names
+#        for n in ns
+#            # Generate matrix
+#            if mat_name in ["blur", "poisson"]
+#                n′ = convert(Int, sqrt(n))
+#            else
+#                n′ = n
+#            end
+#            A = matrixdepot(mat_name, n′)
+#            if size(A) != (n, n)
+#                println("Check matrix size: $(mat_name), ($n, $n) vs $(size(A))")
+#            end
+
+#            grads = Flux.gradient(() -> loss(x, y), Flux.params(model))
+#            Flux.Optimise.update!(opt, Flux.params(model), grads)
+#        end
+#    end
+#        
+#    # Calculate validation loss
+#    val_loss = mean([loss(x, y) for (x, y) in val_loader])
+#    println("Epoch: $epoch, Validation Loss: $val_loss")
+#end
 
