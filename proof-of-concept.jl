@@ -8,6 +8,13 @@ using DataFrames
 using CSV
 using PlotlyJS
 
+# OpenBLAS vs MKL
+mkl = true
+if mkl
+    using MKL
+end
+BLAS.get_config()
+
 # Smart discovery ##############################################################
 
 # Define wrappers to different LU algorithms and implementations
@@ -40,14 +47,15 @@ algs = [umfpack_a, klu_a, splu_a]
 # Define matrices
 mat_names = ["rosser", "companion", "forsythe", "grcar", "triw", "blur", "poisson",
              "heat", "kahan", "frank", "rohess", "baart", "cauchy", "circul",
-             "clement", "deriv2", "dingdong", "fiedler", "foxgood", "golub","
-             gravity", "hankel","hilb", "kms", "lehmer", "lotkin","magic",
+             "clement", "deriv2", "dingdong", "fiedler", "foxgood", "golub",
+             "gravity", "hankel","hilb", "kms", "lehmer", "lotkin","magic",
              "minij", "moler","oscillate", "parter", "pei", "prolate", "randcorr",
              "rando","randsvd","sampling","shaw", "spikes", "toeplitz",
              "tridiag","ursell", "wilkinson","wing", "hadamard", "phillips"]
 
 # Define matrix sizes
-ns = [2^6, 2^8, 2^10, 2^12]
+#ns = [2^6, 2^8, 2^10, 2^12, 2^14]
+ns = [2^6, 2^8, 2^10]
 
 # Define number of experiments
 n_experiments = 5
@@ -119,12 +127,12 @@ function plot_benchmark(df, ns, algs, mat_names, xaxis_type)
 end
 
 plot_benchmark(df, ns, algs, mat_names, "log")
-plot_benchmark(df, ns, algs, mat_names[1:8], "linear")
+plot_benchmark(df, ns, algs, mat_names[1:11], "linear")
 
-for mat_name in mat_names[1:8]
-    A = sparse(matrixdepot(mat_name, 2^6))
-    println(A)
-end 
+#for mat_name in mat_names[1:11]
+#    A = sparse(matrixdepot(mat_name, 2^6))
+#    println(A)
+#end 
 
 # Generate smart choice model ##################################################
 
