@@ -153,9 +153,10 @@ smart_choice[("poisson", 1024)]
 
 using DecisionTree
 using ScikitLearn.CrossValidation: cross_val_score
+using ScikitLearn.Metrics: confusion_matrix
 
-n_features = 4
-n_samples = 1000
+n_features = 9
+n_samples = 600
 features = Matrix{Float64}(undef, n_samples, n_features)
 labels = []
 for i in 1:n_samples
@@ -179,10 +180,23 @@ for i in 1:n_samples
     rank_f = rank(A)
     sparsity_f = count(iszero, A) / length(A)
     condnumber_f = cond(Array(A), 2)
-    features[i, :] = [size_f, rank_f, sparsity_f, condnumber_f]
+    issymmetric_f = Float64(issymmetric(A))
+    istril_f = Float64(istril(A))
+    istriu_f = Float64(istriu(A))
+    isdiag_f = Float64(isdiag(A))
+    isposdef_f = Float64(isposdef(A))
+    features[i, :] = [size_f, rank_f, sparsity_f, condnumber_f, issymmetric_f,
+                      istril_f, istriu_f, isdiag_f, isposdef_f]
 end
 
-model = DecisionTreeClassifier(max_depth=2)
+#isbanded               isdiag                 ishermitian
+#isposdef               isposdef!              isstructurepreserving
+#issuccess              issymmetric            istril
+#istriu                 isunit_char            isvalidstructbc
+#iszerodefined
+
+
+model = DecisionTreeClassifier(max_depth=4)
 fit!(model, features, labels)
 
 # Validate using ScikitLearn
@@ -191,14 +205,35 @@ accuracy = cross_val_score(model, features, labels, cv=3)
 
 # Naive validation
 s = 0
+klu_ok = 0
+klu_fail = 0
+umfpack_ok = 0
+umfpack_fail = 0
 for i in 1:n_samples
     pred_label = predict(model, features[i, :])
-    if labels[i] == predict(model, features[i, :])
+    if labels[i] == pred_label
         s += 1
+    end
+    if labels[i] == "klu_a"
+        if labels[i] == pred_label
+            klu_ok += 1
+        else
+            klu_fail += 1
+        end
+    end
+    if labels[i] == "umfpack_a"
+        if labels[i] == pred_label
+            umfpack_ok += 1
+        else
+            umfpack_fail += 1
+        end
     end
 end
 s / n_samples
-
+klu_ok / sum(labels .== "klu_a")
+klu_fail / sum(labels .== "klu_a")
+umfpack_ok / sum(labels .== "umfpack_a")
+umfpack_fail / sum(labels .== "umfpack_a")
 
 # pretty print of the tree, to a depth of 5 nodes (optional)
 #print_tree(model, 5)
