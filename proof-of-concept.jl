@@ -140,6 +140,8 @@ plot_benchmark(df, ns, algs, mat_patterns[1:11], "linear")
 using Flux
 using Images: imresize
 using Statistics
+using CUDA
+using cuDNN
 
 n_patterns = length(mat_patterns)
 n_cnn = 64
@@ -153,7 +155,8 @@ cnn = Flux.@autosize (n_cnn, n_cnn, 1, 1) Chain(
     Dense(_ => 120, relu),
     Dense(_ => 84, relu), 
     Dense(_ => n_patterns),
-) |> gpu
+) 
+cnn = cnn |> gpu
 
 # Loss function
 loss(x, y) = Flux.logitbinarycrossentropy(x, y)
@@ -179,7 +182,7 @@ for epoch in 1:1000
     
     mat_patterns_batch = rand(mat_patterns, batch_size)
     mat_pattern_indices = [pattern_to_index[mat_pattern] for mat_pattern in mat_patterns_batch]
-    onehot_encoded = Flux.onehotbatch(mat_pattern_indices, 1:length(mat_patterns))
+    onehot_encoded = Flux.onehotbatch(mat_pattern_indices, 1:length(mat_patterns)) |> gpu
     
     As = []
     for j in 1:batch_size
@@ -203,7 +206,9 @@ for epoch in 1:1000
         #push!(As, imresize(A, (n_cnn, n_cnn), method=Linear()))
         push!(As, A)
     end
-    A′ = cat(As..., dims=4)
+    A′ = cat(As..., dims=4) |> gpu
+    
+    GC.gc()
 
     grads = Flux.gradient(cnn -> loss(cnn(A′), onehot_encoded), cnn)
     Flux.update!(opt_state, cnn, grads[1])
