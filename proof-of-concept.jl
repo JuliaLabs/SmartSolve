@@ -60,7 +60,7 @@ ns = [2^6, 2^8, 2^10]
 # Define number of experiments
 n_experiments = 5
 
-# Generate smart choice database through smart discovery
+# Generate smart choice database through smart discovery #######################
 df = DataFrame(mat_pattern = String[], n = Int[], algorithm = String[], 
                time = Float64[], error = Float64[])
 for i in 1:n_experiments
@@ -136,7 +136,81 @@ plot_benchmark(df, ns, algs, mat_patterns[1:11], "linear")
 
 # Generate smart choice model ##################################################
 
-##TODO: ML model here
+# This model associates matrix size and pattern with best algorithm
+smart_choice = Dict()
+for mat_pattern in mat_patterns
+    for n in ns
+        df′ = @views df[(df.mat_pattern .== mat_pattern) .&& (df.n .== n), :]
+        min_time = minimum(df′.time)
+        min_time_row = df′[df′.time .== min_time, :]
+        push!(smart_choice, (mat_pattern, n) => eval(Meta.parse(min_time_row.algorithm[1])))
+    end
+end
+
+smart_choice[("poisson", 1024)]
+
+## Decision tree based selection
+
+using DecisionTree
+using ScikitLearn.CrossValidation: cross_val_score
+
+n_features = 4
+n_samples = 1000
+features = Matrix{Float64}(undef, n_samples, n_features)
+labels = []
+for i in 1:n_samples
+    println("Sample: $i")
+    # Generate matrix
+    mat_pattern = rand(mat_patterns)
+    n = rand(ns)
+    if mat_pattern in ["blur", "poisson"]
+        n′ = convert(Int, sqrt(n))
+    else
+        n′ = n
+    end
+    A = matrixdepot(mat_pattern, n′)
+    if size(A) != (n, n)
+        println("Check matrix size: $(mat_pattern), ($n, $n) vs $(size(A))")
+    end
+    # Save label
+    push!(labels, "$(smart_choice[(mat_pattern, n)])")
+    # Compute and save features
+    size_f = n^2
+    rank_f = rank(A)
+    sparsity_f = count(iszero, A) / length(A)
+    condnumber_f = cond(Array(A), 2)
+    features[i, :] = [size_f, rank_f, sparsity_f, condnumber_f]
+end
+
+model = DecisionTreeClassifier(max_depth=2)
+fit!(model, features, labels)
+
+# Validate using ScikitLearn
+
+accuracy = cross_val_score(model, features, labels, cv=3)
+
+# Naive validation
+s = 0
+for i in 1:n_samples
+    pred_label = predict(model, features[i, :])
+    if labels[i] == predict(model, features[i, :])
+        s += 1
+    end
+end
+s / n_samples
+
+
+# pretty print of the tree, to a depth of 5 nodes (optional)
+#print_tree(model, 5)
+# apply learned model
+#predict(model, [5.9,3.0,5.1,1.9])
+# get the probability of each label
+#predict_proba(model, [5.9,3.0,5.1,1.9])
+#println(get_classes(model)) # returns the ordering of the columns in predict_proba's output
+
+
+
+## CNN based selection
 using Flux
 using Images: imresize
 using Statistics
