@@ -8,6 +8,8 @@ using DataFrames
 using OrderedCollections
 using CSV
 using PlotlyJS
+using DecisionTree
+using Random
 
 # OpenBLAS vs MKL
 mkl = true
@@ -80,7 +82,7 @@ end
 # Smart discovery ##############################################################
 
 # Define wrappers to different LU algorithms and implementations
-function umfpack_a(A)
+function dgetrf_a(A)
     if A isa Matrix
         t = @elapsed L, U, p = lu(A)
         err = norm(A[p,:] - L*U, 1)
@@ -90,6 +92,13 @@ function umfpack_a(A)
         x = res \ b
         err = norm(A * x - b, 1)
     end
+    return t, err
+end
+function umfpack_a(A)
+    t = @elapsed res = lu(sparse(A))
+    b = rand(size(A,1))
+    x = res \ b
+    err = norm(A * x - b, 1)
     return t, err
 end
 function klu_a(A)
@@ -104,7 +113,8 @@ function splu_a(A)
     err = norm(A * x - b, 1) 
     return t, err
 end
-algs = [umfpack_a, klu_a, splu_a]
+algs  = [dgetrf_a, umfpack_a, klu_a, splu_a]
+algs′ = [lu, x->lu(sparse(x)), klu, splu]
 
 # Define matrices
 mat_patterns = ["rosser", "companion", "forsythe", "grcar", "triw", "blur", "poisson",
@@ -117,8 +127,7 @@ mat_patterns = ["rosser", "companion", "forsythe", "grcar", "triw", "blur", "poi
 
 # Define matrix sizes
 #ns = [2^6, 2^8, 2^10, 2^12, 2^14]
-ns = [2^6, 2^8, 2^10]
-ns = [2^5, 2^6, 2^7, 2^8, 2^9, 2^10]
+ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10]
 
 # Define number of experiments
 n_experiments = 1
@@ -170,7 +179,7 @@ plot_benchmark(df, ns, algs, mat_patterns[1:11], "linear")
 
 # Generate smart choice model ##################################################
 
-# Select rows with min time per matrix pattern and size ########################
+# Select rows with min time per matrix pattern and size
 df_opt = create_dataframe()
 for mat_pattern in mat_patterns
     for n in ns
@@ -184,9 +193,6 @@ for mat_pattern in mat_patterns
 end
 
 # Decision tree based selection
-using DecisionTree
-using ScikitLearn.CrossValidation: cross_val_score
-using Random
 
 # Split dataset into training and test
 n_df = size(df_opt, 1)
@@ -201,42 +207,48 @@ labels_train = @views vec(Matrix(df_opt[inds[1:n_train], labels]))
 features_test = @views Matrix(df_opt[inds[1:n_test], features])
 labels_test = @views vec(Matrix(df_opt[inds[1:n_test], labels]))
 
-# Define and fit decision tree classifier
-model = DecisionTreeClassifier(max_depth=4)
-fit!(model, features_train, labels_train)
+# Train full-tree classifier
+model = build_tree(labels_train, features_train)
 
-# Test
-s = 0
-klu_ok = 0
-klu_fail = 0
-umfpack_ok = 0
-umfpack_fail = 0
-n_test = size(features_test, 1)
-for i in 1:n_test
-    pred_label = predict(model, features_test[i, :])
-    if labels_test[i] == pred_label
-        s += 1
-    end
-    if labels_test[i] == "klu_a"
-        if labels_test[i] == pred_label
-            klu_ok += 1
-        else
-            klu_fail += 1
-        end
-    end
-    if labels_test[i] == "umfpack_a"
-        if labels_test[i] == pred_label
-            umfpack_ok += 1
-        else
-            umfpack_fail += 1
-        end
-    end
-end
-s / n_test
-klu_ok / sum(labels_test .== "klu_a")
-klu_fail / sum(labels_test .== "klu_a")
-umfpack_ok / sum(labels_test .== "umfpack_a")
-umfpack_fail / sum(labels_test .== "umfpack_a")
+# Prune tree: merge leaves having >= 90% combined purity (default: 100%)
+model = prune_tree(model, 0.9)
+
+# Pretty print of the tree, to a depth of 5 nodes (optional)
+print_tree(model, 5)
+
+# Apply learned model
+apply_tree(model, features_test[1, :])
+
+# Generate confusion matrix, along with accuracy and kappa scores
+preds_test = apply_tree(model, features_test)
+DecisionTree.confusion_matrix(labels_test, preds_test)
+
+
+#for i in 1:n_test
+#    pred_label = predict(model, features_test[i, :])
+#    if labels_test[i] == pred_label
+#        s += 1
+#    end
+#    if labels_test[i] == "klu_a"
+#        if labels_test[i] == pred_label
+#            klu_ok += 1
+#        else
+#            klu_fail += 1
+#        end
+#    end
+#    if labels_test[i] == "dgetrf_a"
+#        if labels_test[i] == pred_label
+#            dgetrf_ok += 1
+#        else
+#            dgetrf_fail += 1
+#        end
+#    end
+#end
+#s / n_test
+#klu_ok / sum(labels_test .== "klu_a")
+#klu_fail / sum(labels_test .== "klu_a")
+#dgetrf_ok / sum(labels_test .== "dgetrf_a")
+#dgetrf_fail / sum(labels_test .== "dgetrf_a")
 
 
 ##########3
@@ -301,7 +313,7 @@ umfpack_fail / sum(labels_test .== "umfpack_a")
 #            klu_fail += 1
 #        end
 #    end
-#    if labels[i] == "umfpack_a"
+#    if labels[i] == "dgetrf_a"
 #        if labels[i] == pred_label
 #            umfpack_ok += 1
 #        else
@@ -312,8 +324,8 @@ umfpack_fail / sum(labels_test .== "umfpack_a")
 #s / n_samples
 #klu_ok / sum(labels .== "klu_a")
 #klu_fail / sum(labels .== "klu_a")
-#umfpack_ok / sum(labels .== "umfpack_a")
-#umfpack_fail / sum(labels .== "umfpack_a")
+#umfpack_ok / sum(labels .== "dgetrf_a")
+#umfpack_fail / sum(labels .== "dgetrf_a")
 
 ##############
 
@@ -405,7 +417,7 @@ umfpack_fail / sum(labels_test .== "umfpack_a")
 #            klu_fail += 1
 #        end
 #    end
-#    if labels[i] == "umfpack_a"
+#    if labels[i] == "dgetrf_a"
 #        if labels[i] == pred_label
 #            umfpack_ok += 1
 #        else
@@ -417,8 +429,8 @@ umfpack_fail / sum(labels_test .== "umfpack_a")
 #s / n_samples
 #klu_ok / sum(labels .== "klu_a")
 #klu_fail / sum(labels .== "klu_a")
-#umfpack_ok / sum(labels .== "umfpack_a")
-#umfpack_fail / sum(labels .== "umfpack_a")
+#umfpack_ok / sum(labels .== "dgetrf_a")
+#umfpack_fail / sum(labels .== "dgetrf_a")
 
 # pretty print of the tree, to a depth of 5 nodes (optional)
 #print_tree(model, 5)
@@ -554,7 +566,7 @@ umfpack_fail / sum(labels_test .== "umfpack_a")
 #            min_time_row = df′[df′.time .== min_time, :]
 #            a = eval(Meta.parse(min_time_row.algorithm[1]))
 #        else
-#            a = :umfpack_a
+#            a = :dgetrf_a
 #        end
 #        push!(smart_choice, (mat_pattern, n) => a)
 #    end
