@@ -124,10 +124,13 @@ mat_patterns = ["rosser", "companion", "forsythe", "grcar", "triw", "blur", "poi
                 "minij", "moler","oscillate", "parter", "pei", "prolate", "randcorr",
                 "rando","randsvd","sampling","shaw", "spikes", "toeplitz",
                 "tridiag","ursell", "wilkinson","wing", "hadamard", "phillips"]
+#mat_patterns = filter!(x -> x ∉ mdlist(:builtin), mdlist(:all))
+mat_patterns = mdlist(:builtin)
 
 # Define matrix sizes
 #ns = [2^6, 2^8, 2^10, 2^12, 2^14]
-ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10]
+#ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10]
+ns = [2^6, 2^8, 2^10]
 
 # Define number of experiments
 n_experiments = 1
@@ -135,9 +138,10 @@ n_experiments = 1
 # Generate smart choice database through smart discovery #######################
 df = create_dataframe()
 for i in 1:n_experiments
-    println("Experiment $i")
-    for mat_pattern in mat_patterns
+    for (j, mat_pattern) in enumerate(mat_patterns)
         for n in ns
+            println("Experiment:$i, pattern number:$j, pattern:$mat_pattern, no. of cols/rows:$n.")
+            flush(stdout)
             # Generate matrix
             if mat_pattern in ["blur", "poisson"]
                 n′ = round(Int, sqrt(n))
@@ -146,21 +150,25 @@ for i in 1:n_experiments
                 n′ = n
                 n′′ = n
             end
-            A = matrixdepot(mat_pattern, n′)
-            if size(A) != (n′′, n′′)
-                println("Check matrix size: $(mat_pattern), ($n, $n) vs $(size(A))")
-            end
-            # Evaluate different algorithms
-            for a in algs
-                try
-                    t, err = a(A)
-                    row  = vcat( [i, mat_pattern],
-                                 collect(values(compute_mat_props(A))),
-                                 ["$(nameof(a))", t, err])
-                    push!(df, row)
-                catch e
-                    println("$e. $(mat_pattern), $n, $(nameof(a))")
+            try
+                A = matrixdepot(mat_pattern, n′)
+                if size(A) != (n′′, n′′)
+                    throw("Check matrix size: $(mat_pattern), ($n, $n) vs $(size(A))")
                 end
+                # Evaluate different algorithms
+                for a in algs
+                    try
+                        t, err = a(A)
+                        row  = vcat( [i, mat_pattern],
+                                    collect(values(compute_mat_props(A))),
+                                    ["$(nameof(a))", t, err])
+                        push!(df, row)
+                    catch e
+                        println("$e. $(mat_pattern), $n, $(nameof(a))")
+                    end
+                end
+            catch e
+                println("$e. $(mat_pattern)")
             end
             GC.gc()
         end
