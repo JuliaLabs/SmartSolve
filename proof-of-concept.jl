@@ -81,63 +81,7 @@ end
 
 # Smart discovery ##############################################################
 
-# Define wrappers to different LU algorithms and implementations
-function dgetrf_a(A)
-    if A isa Matrix
-        t = @elapsed L, U, p = lu(A)
-        err = norm(A[p,:] - L*U, 1)
-    else # A isa SparseMatrixCSC
-        t = @elapsed res = lu(A)
-        b = rand(size(A,1))
-        x = res \ b
-        err = norm(A * x - b, 1)
-    end
-    return t, err
-end
-function umfpack_a(A)
-    t = @elapsed res = lu(sparse(A))
-    b = rand(size(A,1))
-    x = res \ b
-    err = norm(A * x - b, 1)
-    return t, err
-end
-function klu_a(A)
-    t = @elapsed K = klu(sparse(A))
-    err = norm(K.L * K.U + K.F - K.Rs .\ A[K.p, K.q], 1)
-    return t, err
-end
-function splu_a(A)
-    t = @elapsed res = splu(sparse(A))
-    b = rand(size(A,1))
-    x = res \ b
-    err = norm(A * x - b, 1) 
-    return t, err
-end
-algs  = [dgetrf_a, umfpack_a, klu_a, splu_a]
-algs′ = [lu, x->lu(sparse(x)), klu, splu]
-
-# Define matrices
-mat_patterns = ["rosser", "companion", "forsythe", "grcar", "triw", "blur", "poisson",
-                "heat", "kahan", "frank", "rohess", "baart", "cauchy", "circul",
-                "clement", "deriv2", "dingdong", "fiedler", "foxgood", "golub",
-                "gravity", "hankel","hilb", "kms", "lehmer", "lotkin","magic",
-                "minij", "moler","oscillate", "parter", "pei", "prolate", "randcorr",
-                "rando","randsvd","sampling","shaw", "spikes", "toeplitz",
-                "tridiag","ursell", "wilkinson","wing", "hadamard", "phillips"]
-#mat_patterns = filter!(x -> x ∉ mdlist(:builtin), mdlist(:all))
-mat_patterns = mdlist(:builtin)
-
-# Define matrix sizes
-#ns = [2^6, 2^8, 2^10, 2^12, 2^14]
-#ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10]
-ns = [2^6, 2^8, 2^10]
-
-# Define number of experiments
-n_experiments = 1
-
-# Generate smart choice database through smart discovery #######################
-df = create_dataframe()
-for i in 1:n_experiments
+function discover!(i, df, mat_patterns, algs, ns)
     for (j, mat_pattern) in enumerate(mat_patterns)
         for n in ns
             println("Experiment:$i, pattern number:$j, pattern:$mat_pattern, no. of cols/rows:$n.")
@@ -175,19 +119,89 @@ for i in 1:n_experiments
     end
 end
 
+function discover!(i, df, mat_patterns, algs)
+    for (j, mat_pattern) in enumerate(mat_patterns)   
+        println("Experiment:$i, pattern number:$j, pattern:$mat_pattern.")
+        flush(stdout)
+        try
+            # Generate matrix
+            A = matrixdepot(mat_pattern)
+            # Evaluate different algorithms
+            for a in algs
+                try
+                    t, err = a(A)
+                    row  = vcat( [i, mat_pattern],
+                                collect(values(compute_mat_props(A))),
+                                ["$(nameof(a))", t, err])
+                    push!(df, row)
+                catch e
+                    println("$e. $(mat_pattern), $(nameof(a))")
+                end
+            end
+        catch e
+            println("$e. $(mat_pattern)")
+        end
+        GC.gc()
+    end
+end
 
-# Show and save discovery dataframe ############################################
+# Define wrappers to different LU algorithms and implementations
+function dgetrf_a(A)
+    if A isa Matrix
+        t = @elapsed L, U, p = lu(A)
+        err = norm(A[p,:] - L*U, 1)
+    else # A isa SparseMatrixCSC
+        t = @elapsed res = lu(A)
+        b = rand(size(A,1))
+        x = res \ b
+        err = norm(A * x - b, 1)
+    end
+    return t, err
+end
+function umfpack_a(A)
+    t = @elapsed res = lu(sparse(A))
+    b = rand(size(A,1))
+    x = res \ b
+    err = norm(A * x - b, 1)
+    return t, err
+end
+function klu_a(A)
+    t = @elapsed K = klu(sparse(A))
+    err = norm(K.L * K.U + K.F - K.Rs .\ A[K.p, K.q], 1)
+    return t, err
+end
+function splu_a(A)
+    t = @elapsed res = splu(sparse(A))
+    b = rand(size(A,1))
+    x = res \ b
+    err = norm(A * x - b, 1) 
+    return t, err
+end
+algs  = [dgetrf_a, umfpack_a, klu_a, splu_a]
+algs′ = [lu, x->lu(sparse(x)), klu, splu]
 
-df
-CSV.write("smartsolve.csv", df)
+# Define matrices
+builtin_patterns = mdlist(:builtin)
+sp_mm_patterns = filter!(x -> x ∉ mdlist(:builtin), mdlist(:all))
 
-plot_benchmark(df, ns, algs, mat_patterns, "log")
-plot_benchmark(df, ns, algs, mat_patterns[1:11], "linear")
+# Define matrix sizes
+#ns = [2^6, 2^8, 2^10, 2^12, 2^14]
+#ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10]
+ns = [2^6, 2^8, 2^10]
 
+# Define number of experiments
+n_experiments = 1
 
-# Generate smart choice model ##################################################
+# Generate smart choice database through smart discovery #######################
+df = create_dataframe()
+for i in 1:n_experiments
+    discover!(i, df, builtin_patterns, algs, ns)
+    #discover!(i, df, sp_mm_patterns, algs)
+end
 
-# Select rows with min time per matrix pattern and size
+mat_patterns = builtin_patterns # sp_mm_patterns
+
+# Select rows with min time per matrix pattern and size #######################
 df_opt = create_dataframe()
 for mat_pattern in mat_patterns
     for n in ns
@@ -199,6 +213,17 @@ for mat_pattern in mat_patterns
         end
     end
 end
+
+# Show and save discovery dataframe ############################################
+
+df
+CSV.write("smartsolve.csv", df)
+
+klu_patterns = unique(df_opt[df_opt.algorithm .== "klu_a", :pattern])
+plot_benchmark(df, ns, algs, klu_patterns, "log")
+#plot_benchmark(df, ns, algs, mat_patterns, "log")
+
+# Generate smart choice model ##################################################
 
 # Decision tree based selection
 
@@ -715,3 +740,11 @@ DecisionTree.confusion_matrix(labels_test, preds_test)
 #    end
 #end
 
+# mat_patterns = ["rosser", "companion", "forsythe", "grcar", "triw", "blur", "poisson",
+#                 "heat", "kahan", "frank", "rohess", "baart", "cauchy", "circul",
+#                 "clement", "deriv2", "dingdong", "fiedler", "foxgood", "golub",
+#                 "gravity", "hankel","hilb", "kms", "lehmer", "lotkin","magic",
+#                 "minij", "moler","oscillate", "parter", "pei", "prolate", "randcorr",
+#                 "rando","randsvd","sampling","shaw", "spikes", "toeplitz",
+#                 "tridiag","ursell", "wilkinson","wing", "hadamard", "phillips"]
+#
