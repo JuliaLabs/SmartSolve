@@ -9,6 +9,6 @@ julia --project=.
 
 ```julia
 pkg> instantiate
-julia> include("proof-of-concept.jl")
+julia> include("SmartSolve.jl")
 ```
 
