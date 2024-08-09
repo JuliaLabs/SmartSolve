@@ -22,7 +22,7 @@ function discover!(i, db, mat_patterns, algs, ns)
                 for a in algs
                     try
                         t, err = a(A)
-                        row  = vcat( [i, mat_pattern],
+                        row  = vcat([i, mat_pattern],
                                     collect(values(compute_mat_props(A))),
                                     ["$(nameof(a))", t, err])
                         push!(db, row)
@@ -49,7 +49,7 @@ function discover!(i, db, mat_patterns, algs)
             for a in algs
                 try
                     t, err = a(A)
-                    row  = vcat( [i, mat_pattern],
+                    row  = vcat([i, mat_pattern],
                                 collect(values(compute_mat_props(A))),
                                 ["$(nameof(a))", t, err])
                     push!(db, row)

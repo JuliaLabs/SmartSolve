@@ -56,8 +56,10 @@ CSV.write("smartsolve.csv", db)
 db_opt = compute_smart_choices(db, mat_patterns, ns)
 
 # SmartChoice model
+features = [:length, :rank, :condnumber, :sparsity, :isdiag, :issymmetric,
+            :ishermitian, :isposdef, :istriu, :istril]
 features_train, labels_train, 
-features_test, labels_test = create_datasets(db_opt)
+features_test, labels_test = create_datasets(db_opt, features)
 model = train_smart_choice_model(features_train, labels_train)
 test_smart_choice_model(model, features_test, labels_test)
 print_tree(model, 5) # Print of the tree, to a depth of 5 nodes
@@ -66,3 +68,15 @@ print_tree(model, 5) # Print of the tree, to a depth of 5 nodes
 klu_patterns = unique(db_opt[db_opt.algorithm .== "klu_a", :pattern])
 plot_benchmark(db, ns, algs, klu_patterns, "log")
 #plot_benchmark(db, ns, algs, mat_patterns, "log")
+
+# function smart_lu(A)
+#     mat_props = compute_mat_props(A)
+#     mat_prop_vals = Float64.([mat_props[f] for f in features])
+#     func = eval(Meta.parse(apply_tree(model, mat_prop_vals)))
+#     i = findfirst(isequal(func), algs)
+#     return algs′[i](A)
+# end
+
+# A = rand(1000,1000)
+# @elapsed smart_lu(A)
+# @elapsed lu(A)

@@ -1,13 +1,11 @@
 # Smart choice model: decision tree based selection
 
-function create_datasets(db)
+function create_datasets(db, features)
     # Split dataset into training and test
     n_db = size(db, 1)
     n_train = round(Int, n_db * 0.8)
     n_test = n_db - n_train
     inds = randperm(n_db)
-    features = [:length, :rank, :condnumber, :sparsity, :isdiag, :issymmetric,
-                :ishermitian, :isposdef, :istriu, :istril]
     labels = [:algorithm]
     features_train = @views Matrix(db[inds[1:n_train], features])
     labels_train = @views vec(Matrix(db[inds[1:n_train], labels]))

@@ -33,7 +33,7 @@ function compute_smart_choices(db, mat_patterns, ns)
     for mat_pattern in mat_patterns
         for n in ns
             db′ = @views db[(db.pattern .== mat_pattern) .&&
-                                 (db.n_cols .== n), :]
+                            (db.n_cols .== n), :]
             if length(db′.time) > 0
                 min_time = minimum(db′.time)
                 min_time_row = db′[db′.time .== min_time, :][1, :]
