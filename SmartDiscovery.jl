@@ -1,4 +1,4 @@
-# Smart discovery ##############################################################
+# SmartDiscovery: algorithms x matrix patterns x sizes -> time x error
 
 function discover!(i, db, mat_patterns, algs, ns)
     for (j, mat_pattern) in enumerate(mat_patterns)
@@ -18,22 +18,25 @@ function discover!(i, db, mat_patterns, algs, ns)
                 if size(A) != (n′′, n′′)
                     throw("Check matrix size: $(mat_pattern), ($n, $n) vs $(size(A))")
                 end
+                b = rand(size(A,1)) # vector required to measure error
                 # Evaluate different algorithms
-                for a in algs
+                for (name, alg) in algs
                     try
-                        t, err = a(A)
+                        t = @elapsed res = alg(A)
+                        x = res \ b
+                        err = norm(A * x - b, 1)
                         row  = vcat([i, mat_pattern],
-                                    collect(values(compute_mat_props(A))),
-                                    ["$(nameof(a))", t, err])
+                                    compute_feature_values(A),
+                                    [name, t, err])
                         push!(db, row)
                     catch e
-                        println("$e. $(mat_pattern), $n, $(nameof(a))")
+                        println("$e. $(mat_pattern), $n, $name")
                     end
                 end
             catch e
                 println("$e. $(mat_pattern)")
             end
-            GC.gc()
+            #GC.gc()
         end
     end
 end
@@ -45,16 +48,19 @@ function discover!(i, db, mat_patterns, algs)
         try
             # Generate matrix
             A = matrixdepot(mat_pattern)
+            b = rand(size(A,1)) # required to measure error
             # Evaluate different algorithms
-            for a in algs
+            for (name, alg) in algs
                 try
-                    t, err = a(A)
+                    t = @elapsed res = alg(A)
+                    x = res \ b
+                    err = norm(A * x - b, 1)
                     row  = vcat([i, mat_pattern],
-                                collect(values(compute_mat_props(A))),
-                                ["$(nameof(a))", t, err])
+                                compute_feature_values(A),
+                                [name, t, err])
                     push!(db, row)
                 catch e
-                    println("$e. $(mat_pattern), $(nameof(a))")
+                    println("$e. $(mat_pattern), $name")
                 end
             end
         catch e

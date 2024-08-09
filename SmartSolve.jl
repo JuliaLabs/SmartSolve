@@ -10,6 +10,7 @@ using CSV
 using PlotlyJS
 using DecisionTree
 using Random
+using BenchmarkTools
 
 # OpenBLAS vs MKL
 mkl = true
@@ -21,62 +22,74 @@ BLAS.get_config()
 include("SmartDiscovery.jl")
 include("SmartSolveDB.jl")
 include("SmartChoice.jl")
-include("Algorithms.jl")
 include("Utils.jl")
 
 # SmartSolve workflow ########################################################
 
-# SmartDiscovery: algorithms x matrix patterns x sizes -> time x error
+function smartsolve(name, algs)
 
-# Define algorithms
-algs  = [dgetrf_a, umfpack_a, klu_a, splu_a]
-algs′ = [lu, x->lu(sparse(x)), klu, splu]
+    # Define matrices
+    builtin_patterns = mdlist(:builtin)
+    sp_mm_patterns = filter!(x -> x ∉ mdlist(:builtin), mdlist(:all))
+    mat_patterns = builtin_patterns # [builtin_patterns; sp_mm_patterns]
 
-# Define matrices
-builtin_patterns = mdlist(:builtin)
-sp_mm_patterns = filter!(x -> x ∉ mdlist(:builtin), mdlist(:all))
-mat_patterns = builtin_patterns # [builtin_patterns; sp_mm_patterns]
+    # Define matrix sizes
+    #ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10]
+    ns = [2^6, 2^8, 2^10]
 
-# Define matrix sizes
-#ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10]
-ns = [2^6, 2^8, 2^10]
+    # Define number of experiments
+    n_experiments = 1
 
-# Define number of experiments
-n_experiments = 1
+    # Generate smart discovery database
+    fulldb = create_empty_db()
+    for i in 1:n_experiments
+        discover!(i, fulldb, builtin_patterns, algs, ns)
+        #discover!(i, fulldb, sp_mm_patterns, algs)
+    end
 
-# Generate smart discovery database
-db = create_empty_db()
-for i in 1:n_experiments
-    discover!(i, db, builtin_patterns, algs, ns)
-    #discover!(i, db, sp_mm_patterns, algs)
+    # Filter full DB with optimal choices in terms of performance
+    smartdb = get_smart_choices(fulldb, mat_patterns, ns)
+
+    # SmartChoice model
+    features = [:length,  :sparsity]
+    features_train, labels_train, 
+    features_test, labels_test = create_datasets(smartdb, features)
+    smartmodel = train_smart_choice_model(features_train, labels_train)
+    test_smart_choice_model(smartmodel, features_test, labels_test)
+    print_tree(smartmodel, 5) # Print of the tree, to a depth of 5 nodes
+
+    function smartalg(A, smartmodel, algs)
+        features = compute_feature_values(A; targetfeatures = [:length,  :sparsity])
+        name = apply_tree(smartmodel, features)
+        return algs[name](A)
+    end
+
+    return fulldb, smartdb, smartmodel, smartalg
 end
-CSV.write("smartsolve.csv", db)
 
-# Filter DB with optimal algorithms
-db_opt = compute_smart_choices(db, mat_patterns, ns)
+# Create a smart version of LU
+name = "LU"
+algs  = OrderedDict( "dgetrf"  => lu,
+                     "umfpack" => x->lu(sparse(x)),
+                     "klu"     => x->klu(sparse(x)),
+                     "splu"    => x->splu(sparse(x)))
+fulldb, smartdb, smartmodel, smartlu = smartsolve(name, algs)
 
-# SmartChoice model
-features = [:length, :rank, :condnumber, :sparsity, :isdiag, :issymmetric,
-            :ishermitian, :isposdef, :istriu, :istril]
-features_train, labels_train, 
-features_test, labels_test = create_datasets(db_opt, features)
-model = train_smart_choice_model(features_train, labels_train)
-test_smart_choice_model(model, features_test, labels_test)
-print_tree(model, 5) # Print of the tree, to a depth of 5 nodes
+# Benchmark speed
+A = matrixdepot("rosser", 2^10)
+@benchmark res_lu = lu($A)
+@benchmark res_smartlu = smartlu($A, $smartmodel, $algs)
 
-# Plot benchkmark for KLU
-klu_patterns = unique(db_opt[db_opt.algorithm .== "klu_a", :pattern])
-plot_benchmark(db, ns, algs, klu_patterns, "log")
-#plot_benchmark(db, ns, algs, mat_patterns, "log")
+# Compute errors
+b = rand(2^10)
+x = lu(A) \ b
+norm(A * x - b, 1)
+x = smartlu(A, smartmodel, algs) \ b
+norm(A * x - b, 1)
 
-# function smart_lu(A)
-#     mat_props = compute_mat_props(A)
-#     mat_prop_vals = Float64.([mat_props[f] for f in features])
-#     func = eval(Meta.parse(apply_tree(model, mat_prop_vals)))
-#     i = findfirst(isequal(func), algs)
-#     return algs′[i](A)
-# end
+# Save and plot
+CSV.write("fulldb-$name.csv", fulldb)
+CSV.write("smartdb-$name.csv", smartdb)
 
-# A = rand(1000,1000)
-# @elapsed smart_lu(A)
-# @elapsed lu(A)
+klu_patterns = unique(smartdb[smartdb.algorithm .== "klu_a", :pattern])
+plot_benchmark(fulldb, ns, algs, klu_patterns, "log")
