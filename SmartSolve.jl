@@ -76,7 +76,8 @@ algs  = OrderedDict( "dgetrf"  => lu,
 fulldb, smartdb, smartmodel, smartlu = smartsolve(name, algs)
 
 # Benchmark speed
-A = matrixdepot("rosser", 2^10)
+n = 2^10
+A = matrixdepot("blur", round(Int, sqrt(n))) # nxn
 @benchmark res_lu = lu($A)
 @benchmark res_smartlu = smartlu($A, $smartmodel, $algs)
 
@@ -87,9 +88,10 @@ norm(A * x - b, 1)
 x = smartlu(A, smartmodel, algs) \ b
 norm(A * x - b, 1)
 
-# Save and plot
+# Save databases
 CSV.write("fulldb-$name.csv", fulldb)
 CSV.write("smartdb-$name.csv", smartdb)
 
+# Plot KLU results
 klu_patterns = unique(smartdb[smartdb.algorithm .== "klu_a", :pattern])
 plot_benchmark(fulldb, ns, algs, klu_patterns, "log")
