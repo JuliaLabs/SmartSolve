@@ -3,7 +3,7 @@
 function discover!(i, db, mat_patterns, algs, ns)
     for (j, mat_pattern) in enumerate(mat_patterns)
         for n in ns
-            println("Experiment:$i, pattern number:$j, pattern:$mat_pattern, no. of cols/rows:$n.")
+            println("Experiment:$i, pattern number:$j, pattern:$mat_pattern, no. of cols or rows:$n.")
             flush(stdout)
             # Generate matrix
             if mat_pattern in ["blur", "poisson"]
