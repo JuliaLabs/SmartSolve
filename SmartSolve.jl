@@ -10,6 +10,7 @@ using CSV
 using PlotlyJS
 using DecisionTree
 using Random
+using JLD2
 using BenchmarkTools
 
 # OpenBLAS vs MKL
@@ -26,7 +27,13 @@ include("Utils.jl")
 
 # SmartSolve workflow ########################################################
 
-function smartsolve(name, algs)
+function smartsolve(path, name, algs)
+
+    # Create result directory
+    run(`mkdir -p $path/$name`)
+
+    # Save algorithms
+    save("$path/$name/algs-$name.jld2", algs)
 
     # Define matrices
     builtin_patterns = mdlist(:builtin)
@@ -34,8 +41,8 @@ function smartsolve(name, algs)
     mat_patterns = builtin_patterns # [builtin_patterns; sp_mm_patterns]
 
     # Define matrix sizes
-    #ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10]
-    ns = [2^6, 2^8, 2^10]
+    #ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10, 2^12]
+    ns = [2^4, 2^8]
 
     # Define number of experiments
     n_experiments = 1
@@ -46,52 +53,77 @@ function smartsolve(name, algs)
         discover!(i, fulldb, builtin_patterns, algs, ns)
         #discover!(i, fulldb, sp_mm_patterns, algs)
     end
+    CSV.write("$path/$name/fulldb-$name.csv", fulldb)
 
     # Filter full DB with optimal choices in terms of performance
     smartdb = get_smart_choices(fulldb, mat_patterns, ns)
+    CSV.write("$path/$name/smartdb-$name.csv", smartdb)
 
     # SmartChoice model
     features = [:length,  :sparsity]
     features_train, labels_train, 
     features_test, labels_test = create_datasets(smartdb, features)
-    smartmodel = train_smart_choice_model(features_train, labels_train)
+    smartmodel = train_smart_choice_model(features_train, labels_train)    
+    jldsave("$path/$name/features-$name.jld2"; features)
+    jldsave("$path/$name/smartmodel-$name.jld2"; smartmodel)
+
     test_smart_choice_model(smartmodel, features_test, labels_test)
     print_tree(smartmodel, 5) # Print of the tree, to a depth of 5 nodes
 
-    function smartalg(A, smartmodel, algs)
-        features = compute_feature_values(A; targetfeatures = [:length,  :sparsity])
-        name = apply_tree(smartmodel, features)
+    # smartmodel = load("$path/$name/smart-$name-model.jld2")["smartmodel"]
+    # algs = load("$path/$name/$name-algs.jld2")
+    # features = load("$path/$name/$name-algs.jld2")
+    # function smartalg(A; smartmodel = smartmodel,
+    #                      algs = algs,
+    #                     features = features)
+    #     features = compute_feature_values(A; features = features)
+    #     name = apply_tree(smartmodel, features)
+    #     return algs[name](A)
+    # end
+
+    smartalg = """
+    features_$name = load("$path/$name/features-$name.jld2")["features"]
+    smartmodel_$name = load("$path/$name/smartmodel-$name.jld2")["smartmodel"]
+    algs_$name = load("$path/$name/algs-$name.jld2")
+    function smart$name(A;  features = features_$name,
+                            smartmodel = smartmodel_$name,
+                            algs = algs_$name)
+        fs = compute_feature_values(A; features = features)
+        name = apply_tree(smartmodel, fs)
         return algs[name](A)
+    end"""
+
+    open("$path/$name/smart$name.jl", "w") do file
+        write(file, smartalg)
     end
 
-    return fulldb, smartdb, smartmodel, smartalg
+    return fulldb, smartdb, smartmodel
 end
 
 # Create a smart version of LU
-name = "LU"
+path = "smartalgs"
+name = "lu"
 algs  = OrderedDict( "dgetrf"  => lu,
                      "umfpack" => x->lu(sparse(x)),
                      "klu"     => x->klu(sparse(x)),
                      "splu"    => x->splu(sparse(x)))
-fulldb, smartdb, smartmodel, smartlu = smartsolve(name, algs)
+fulldb, smartdb, smartmodel = smartsolve(path, name, algs)
+
+include("$path/$name/smart$name.jl")
 
 # Benchmark speed
 n = 2^10
 A = matrixdepot("blur", round(Int, sqrt(n))) # nxn
-@benchmark res_lu = lu($A)
-@benchmark res_smartlu = smartlu($A, $smartmodel, $algs)
+@benchmark lu($A)
+@benchmark smartlu($A)
 
 # Compute errors
-b = rand(2^10)
+b = rand(n)
 x = lu(A) \ b
 norm(A * x - b, 1)
-x = smartlu(A, smartmodel, algs) \ b
+x = smartlu(A) \ b
 norm(A * x - b, 1)
 
-# Save databases
-CSV.write("fulldb-$name.csv", fulldb)
-CSV.write("smartdb-$name.csv", smartdb)
-
 # Plot KLU results
-klu_patterns = unique(smartdb[smartdb.algorithm .== "klu_a", :pattern])
-plot_benchmark(fulldb, ns, algs, klu_patterns, "log")
+#klu_patterns = unique(smartdb[smartdb.algorithm .== "klu_a", :pattern])
+#plot_benchmark(fulldb, ns, algs, klu_patterns, "log")

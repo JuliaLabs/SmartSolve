@@ -18,7 +18,7 @@ function discover!(i, db, mat_patterns, algs, ns)
                 if size(A) != (n′′, n′′)
                     throw("Check matrix size: $(mat_pattern), ($n, $n) vs $(size(A))")
                 end
-                b = rand(size(A,1)) # vector required to measure error
+                b = A * ones(size(A,1)) # vector required to measure error
                 # Evaluate different algorithms
                 for (name, alg) in algs
                     try
@@ -48,7 +48,7 @@ function discover!(i, db, mat_patterns, algs)
         try
             # Generate matrix
             A = matrixdepot(mat_pattern)
-            b = rand(size(A,1)) # required to measure error
+            b = A * ones(size(A,1)) # required to measure error
             # Evaluate different algorithms
             for (name, alg) in algs
                 try

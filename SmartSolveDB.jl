@@ -1,29 +1,29 @@
-features = OrderedDict() 
-features[:length] = x -> length(x)
-features[:n_rows] = x -> size(x, 1)
-features[:n_cols] = x -> size(x, 2)
-features[:rank] = x -> rank(x)
-features[:condnumber] = x -> cond(Array(x), 2)
-features[:sparsity] = x -> count(iszero, x) / length(x)
-features[:isdiag] = x -> Float64(isdiag(x))
-features[:issymmetric] = x -> Float64(issymmetric(x))
-features[:ishermitian] = x -> Float64(ishermitian(x))
-features[:isposdef] = x -> Float64(isposdef(x))
-features[:istriu] = x -> Float64(istriu(x))
-features[:istril] = x -> Float64(istril(x))
+all_features = OrderedDict() 
+all_features[:length] = x -> length(x)
+all_features[:n_rows] = x -> size(x, 1)
+all_features[:n_cols] = x -> size(x, 2)
+all_features[:rank] = x -> rank(x)
+all_features[:condnumber] = x -> cond(Array(x), 2)
+all_features[:sparsity] = x -> count(iszero, x) / length(x)
+all_features[:isdiag] = x -> Float64(isdiag(x))
+all_features[:issymmetric] = x -> Float64(issymmetric(x))
+all_features[:ishermitian] = x -> Float64(ishermitian(x))
+all_features[:isposdef] = x -> Float64(isposdef(x))
+all_features[:istriu] = x -> Float64(istriu(x))
+all_features[:istril] = x -> Float64(istril(x))
 
-function compute_feature_dict(A; targetfeatures = keys(features))
+function compute_feature_dict(A; features = keys(all_features))
     feature_dict = OrderedDict()
-    for f in targetfeatures
-        feature_dict[f] = features[f](A)
+    for f in features
+        feature_dict[f] = all_features[f](A)
     end
     return feature_dict
 end
 
-function compute_feature_values(A; targetfeatures = keys(features))
+function compute_feature_values(A; features = keys(all_features))
     feature_vals = Float64[]
-    for f in targetfeatures
-        push!(feature_vals, features[f](A))
+    for f in features
+        push!(feature_vals, all_features[f](A))
     end
     return feature_vals
 end
