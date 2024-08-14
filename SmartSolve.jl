@@ -42,7 +42,7 @@ function smartsolve(path, name, algs)
 
     # Define matrix sizes
     #ns = [2^3, 2^4, 2^5, 2^6, 2^7, 2^8, 2^9, 2^10, 2^12]
-    ns = [2^4, 2^8]
+    ns = [2^4, 2^8, 2^12]
 
     # Define number of experiments
     n_experiments = 1
@@ -99,7 +99,7 @@ algs  = OrderedDict( "dgetrf"  => lu,
                      "splu"    => x->splu(sparse(x)))
 smartsolve(alg_path, alg_name, algs)
 
-include("$alg_path/smart$name.jl")
+include("$alg_path/smart$alg_name.jl")
 
 # Benchmark speed
 n = 2^10
@@ -114,6 +114,11 @@ norm(A * x - b, 1)
 x = smartlu(A) \ b
 norm(A * x - b, 1)
 
-# Plot KLU results
-klu_patterns = unique(smartdb[smartdb.algorithm .== "klu_a", :pattern])
-#plot_benchmark(fulldb, ns, algs, klu_patterns, "log")
+# Plot results
+smartdb = CSV.read("$alg_path/smartdb-$alg_name.csv", DataFrame)
+fulldb = CSV.read("$alg_path/fulldb-$alg_name.csv", DataFrame)
+ns = unique(smartdb[:, :n_cols])
+for alg_name_i in keys(algs)
+    alg_i_patterns = unique(smartdb[smartdb.algorithm .== alg_name_i, :pattern])
+    plot_benchmark(alg_path, alg_name_i, fulldb, ns, algs, alg_i_patterns, "log")
+end

@@ -1,5 +1,5 @@
-function plot_benchmark(df, ns, algs, mat_patterns, xaxis_type)
-    algs_str = ["$(nameof(a))" for a in algs]
+function plot_benchmark(alg_path, alg_name, df, ns, algs, mat_patterns, xaxis_type)
+    algs_str = ["$a" for a in keys(algs)]
     for n in ns
         p = plot(
             [(
@@ -23,6 +23,6 @@ function plot_benchmark(df, ns, algs, mat_patterns, xaxis_type)
                      xaxis_type=xaxis_type,
                      xaxis_title="Time [s]",
                      yaxis_title="Matrix pattern, size $(n)x$(n)")
-        savefig(p, "algorithms_times_$(n)_$(xaxis_type).png", width=600, height=800, scale=1.5)
+        savefig(p, "$(alg_path)/$(alg_name)_times_$(n)_$(xaxis_type).png", width=600, height=800, scale=1.5)
     end
 end
