@@ -10,8 +10,8 @@ using CSV
 using PlotlyJS
 using DecisionTree
 using Random
-using JLD2
 using BenchmarkTools
+using BSON
 
 # OpenBLAS vs MKL
 mkl = true
@@ -33,7 +33,7 @@ function smartsolve(path, name, algs)
     run(`mkdir -p $path/$name`)
 
     # Save algorithms
-    jldsave("$path/$name/algs-$name.jld2"; algs)
+    BSON.@save "$path/$name/algs-$name.bson" algs
 
     # Define matrices
     builtin_patterns = mdlist(:builtin)
@@ -64,17 +64,17 @@ function smartsolve(path, name, algs)
     features_train, labels_train, 
     features_test, labels_test = create_datasets(smartdb, features)
     smartmodel = train_smart_choice_model(features_train, labels_train)    
-    jldsave("$path/$name/features-$name.jld2"; features)
-    jldsave("$path/$name/smartmodel-$name.jld2"; smartmodel)
+    BSON.@save "$path/$name/features-$name.bson" features
+    BSON.@save "$path/$name/smartmodel-$name.bson" smartmodel
 
     test_smart_choice_model(smartmodel, features_test, labels_test)
     print_tree(smartmodel, 5) # Print of the tree, to a depth of 5 nodes
 
     # Smart algorithm
     smartalg = """
-    features_$name = load("$path/$name/features-$name.jld2")["features"]
-    smartmodel_$name = load("$path/$name/smartmodel-$name.jld2")["smartmodel"]
-    algs_$name = load("$path/$name/algs-$name.jld2")["algs"]
+    features_$name = BSON.load("$path/$name/features-$name.bson")[:features]
+    smartmodel_$name = BSON.load("$path/$name/smartmodel-$name.bson")[:smartmodel]
+    algs_$name = BSON.load("$path/$name/algs-$name.bson")[:algs]
     function smart$name(A; features = features_$name,
                         smartmodel = smartmodel_$name,
                         algs = algs_$name)
@@ -91,15 +91,15 @@ function smartsolve(path, name, algs)
 end
 
 # Create a smart version of LU
-path = "smartalgs"
-name = "lu"
+alg_name = "lu"
+alg_path = "smartalgs/$alg_name"
 algs  = OrderedDict( "dgetrf"  => lu,
                      "umfpack" => x->lu(sparse(x)),
                      "klu"     => x->klu(sparse(x)),
                      "splu"    => x->splu(sparse(x)))
-smartsolve(path, name, algs)
+smartsolve(alg_path, alg_name, algs)
 
-include("$path/$name/smart$name.jl")
+include("$alg_path/smart$name.jl")
 
 # Benchmark speed
 n = 2^10
@@ -115,5 +115,5 @@ x = smartlu(A) \ b
 norm(A * x - b, 1)
 
 # Plot KLU results
-#klu_patterns = unique(smartdb[smartdb.algorithm .== "klu_a", :pattern])
+klu_patterns = unique(smartdb[smartdb.algorithm .== "klu_a", :pattern])
 #plot_benchmark(fulldb, ns, algs, klu_patterns, "log")
