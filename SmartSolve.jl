@@ -27,13 +27,13 @@ include("Utils.jl")
 
 # SmartSolve workflow ########################################################
 
-function smartsolve(path, name, algs)
+function smartsolve(alg_path, alg_name, algs)
 
     # Create result directory
-    run(`mkdir -p $path/$name`)
+    run(`mkdir -p $alg_path`)
 
     # Save algorithms
-    BSON.@save "$path/$name/algs-$name.bson" algs
+    BSON.@save "$alg_path/algs-$alg_name.bson" algs
 
     # Define matrices
     builtin_patterns = mdlist(:builtin)
@@ -53,37 +53,37 @@ function smartsolve(path, name, algs)
         discover!(i, fulldb, builtin_patterns, algs, ns)
         #discover!(i, fulldb, sp_mm_patterns, algs)
     end
-    CSV.write("$path/$name/fulldb-$name.csv", fulldb)
+    CSV.write("$alg_path/fulldb-$alg_name.csv", fulldb)
 
     # Smart DB: filter complete DB for faster algorithmic options
     smartdb = get_smart_choices(fulldb, mat_patterns, ns)
-    CSV.write("$path/$name/smartdb-$name.csv", smartdb)
+    CSV.write("$alg_path/smartdb-$alg_name.csv", smartdb)
 
     # Smart model
     features = [:length,  :sparsity]
     features_train, labels_train, 
     features_test, labels_test = create_datasets(smartdb, features)
     smartmodel = train_smart_choice_model(features_train, labels_train)    
-    BSON.@save "$path/$name/features-$name.bson" features
-    BSON.@save "$path/$name/smartmodel-$name.bson" smartmodel
+    BSON.@save "$alg_path/features-$alg_name.bson" features
+    BSON.@save "$alg_path/smartmodel-$alg_name.bson" smartmodel
 
     test_smart_choice_model(smartmodel, features_test, labels_test)
     print_tree(smartmodel, 5) # Print of the tree, to a depth of 5 nodes
 
     # Smart algorithm
     smartalg = """
-    features_$name = BSON.load("$path/$name/features-$name.bson")[:features]
-    smartmodel_$name = BSON.load("$path/$name/smartmodel-$name.bson")[:smartmodel]
-    algs_$name = BSON.load("$path/$name/algs-$name.bson")[:algs]
-    function smart$name(A; features = features_$name,
-                        smartmodel = smartmodel_$name,
-                        algs = algs_$name)
+    features_$alg_name = BSON.load("$alg_path/features-$alg_name.bson")[:features]
+    smartmodel_$alg_name = BSON.load("$alg_path/smartmodel-$alg_name.bson")[:smartmodel]
+    algs_$alg_name = BSON.load("$alg_path/algs-$alg_name.bson")[:algs]
+    function smart$alg_name(A; features = features_$alg_name,
+                        smartmodel = smartmodel_$alg_name,
+                        algs = algs_$alg_name)
         fs = compute_feature_values(A; features = features)
         name = apply_tree(smartmodel, fs)
         return algs[name](A)
     end"""
 
-    open("$path/$name/smart$name.jl", "w") do file
+    open("$alg_path/smart$alg_name.jl", "w") do file
         write(file, smartalg)
     end
 
@@ -101,17 +101,24 @@ smartsolve(alg_path, alg_name, algs)
 
 include("$alg_path/smart$alg_name.jl")
 
-# Benchmark speed
-n = 2^10
-A = matrixdepot("blur", round(Int, sqrt(n))) # nxn
-@benchmark lu($A)
-@benchmark smartlu($A)
+# LU vs SmartLU: time and memory usage
+n = 2^14;
+A = matrixdepot("poisson", round(Int, sqrt(n))); # nxn
+@benchmark lu($A) seconds=200
+@benchmark smartlu($A) seconds=10
+
+# Backslash vs SmartBackslash via SmartLU: time and memory usage
+b = rand(n);
+@benchmark $A\$b seconds=200
+@benchmark lu($A)\$b seconds=200
+@benchmark smartlu($A)\$b seconds=10
 
 # Compute errors
-b = rand(n)
-x = lu(A) \ b
+x = A \ b;
 norm(A * x - b, 1)
-x = smartlu(A) \ b
+x = lu(A) \ b;
+norm(A * x - b, 1)
+x = smartlu(A) \ b;
 norm(A * x - b, 1)
 
 # Plot results
