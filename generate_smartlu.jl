@@ -22,10 +22,11 @@ BLAS.get_config()
 
 include("SmartSolve.jl")
 
-# Use SmartSolve to generate a smart version of a linear algebra
-# algorithm based on enhanced algorithm choices.
-
-# Case study: SmartLU
+# SmartSolve aims to significantly accelerate various linear
+# algebra algorithms based on providing better algorithmic
+# and architectural choices.
+# Here, SmartSolve is used to automatically generate an
+# optimized version of LU decomposition: SmartLU.
 
 # Define candidate algorithms
 dgetrf(A::Matrix) = lu(A)
