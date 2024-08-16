@@ -1,6 +1,8 @@
 # SmartSolve. Proof of concept.
 
-Getting started
+SmartSolve aims to significantly accelerate various linear algebra algorithms based on providing better algorithmic and architectural choices.
+
+Getting started.
 
 ```bash
 cd SmartSolve
@@ -8,7 +10,7 @@ julia --project=.
 pkg> instantiate
 ```
 
-Use SmartSolve to automatically generate a smart version of a linear algebra algorithm based on enhanced algorithm choices. Case study: SmartLU.
+In the following example, SmartSolve is used to automatically generate an optimized version of the LU decomposition: SmartLU.
 
 ```julia
 julia> include("generate_smartlu.jl")
