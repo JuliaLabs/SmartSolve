@@ -5,7 +5,7 @@ include("Utils.jl")
 
 function smartsolve(alg_path, alg_name, algs;
                     n_experiments = 1,
-                    ns = [2^4, 2^8],
+                    ns = [2^4, 2^8, 2^12],
                     mats = [])
 
     # Create result directory

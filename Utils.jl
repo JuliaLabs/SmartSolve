@@ -1,3 +1,15 @@
+function makeplots(alg_path, alg_name)
+    smartdb = CSV.read("$alg_path/smartdb-$alg_name.csv", DataFrame)
+    fulldb = CSV.read("$alg_path/fulldb-$alg_name.csv", DataFrame)
+    algs = BSON.load("$alg_path/algs-$alg_name.bson")[:algs]
+    ns = unique(smartdb[:, :n_cols])
+    for alg in algs
+        local alg_name = String(Symbol(alg)) 
+        alg_patterns = unique(smartdb[smartdb.algorithm .== alg_name, :pattern])
+        plot_benchmark(alg_path, alg_name, fulldb, ns, algs, alg_patterns, "log")
+    end
+end
+
 function plot_benchmark(alg_path, alg_name, df, ns, algs, mat_patterns, xaxis_type)
     algs_str = [String(Symbol(alg))  for alg in algs]
     for n in ns
