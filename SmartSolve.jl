@@ -98,8 +98,9 @@ SuperLU.splu(A::Matrix) = splu(sparse(A))
 algs = [dgetrf, umfpack, klu, splu]
 
 # Define your custom matrices to include in training
-A = rand(2^12, 2^12)
-B = sprand(2^12, 2^12, 0.3)
+n = 2^14;
+A = rand(n, n)
+B = sprand(n, n, 0.3)
 mats = [A, B]
 
 # Run smartsolve
@@ -110,34 +111,35 @@ smartsolve(alg_path, alg_name, algs; mats = mats)
 # Include the newly generated algorithm
 include("$alg_path/smart$alg_name.jl")
 
-# LU vs SmartLU: time and memory usage
-n = 2^14;
-A = matrixdepot("poisson", round(Int, sqrt(n))); # nxn
-@benchmark lu($A) seconds=200
-@benchmark smartlu($A) seconds=10
+# # LU vs SmartLU: time and memory usage
+# n = 2^14;
+# A = matrixdepot("poisson", round(Int, sqrt(n))); # nxn
+# @benchmark lu($A) seconds=200
+# @benchmark smartlu($A) seconds=10
 
-# Backslash vs SmartBackslash via SmartLU: time and memory usage
-b = rand(n);
-@benchmark $A\$b seconds=200
-@benchmark lu($A)\$b seconds=200
-@benchmark smartlu($A)\$b seconds=10
+# # Backslash vs SmartBackslash via SmartLU: time and memory usage
+# b = rand(n);
+# @benchmark $A\$b seconds=200
+# @benchmark lu($A)\$b seconds=200
+# @benchmark smartlu($A)\$b seconds=10
 
-# Compute errors
-x = A \ b;
-norm(A * x - b, 1)
-x = lu(A) \ b;
-norm(A * x - b, 1)
-x = smartlu(A) \ b;
-norm(A * x - b, 1)
+# # Compute errors
+# x = A \ b;
+# norm(A * x - b, 1)
+# x = lu(A) \ b;
+# norm(A * x - b, 1)
+# x = smartlu(A) \ b;
+# norm(A * x - b, 1)
 
 # Plot results
 smartdb = CSV.read("$alg_path/smartdb-$alg_name.csv", DataFrame)
 fulldb = CSV.read("$alg_path/fulldb-$alg_name.csv", DataFrame)
 algs = BSON.load("$alg_path/algs-$alg_name.bson")[:algs]
 ns = unique(smartdb[:, :n_cols])
-for alg_name_i in keys(algs)
-    alg_i_patterns = unique(smartdb[smartdb.algorithm .== alg_name_i, :pattern])
-    plot_benchmark(alg_path, alg_name_i, fulldb, ns, algs, alg_i_patterns, "log")
+for alg in algs
+    local alg_name = String(Symbol(alg)) 
+    alg_patterns = unique(smartdb[smartdb.algorithm .== alg_name, :pattern])
+    plot_benchmark(alg_path, alg_name, fulldb, ns, algs, alg_patterns, "log")
 end
 
 # # Create a smart version of LU
@@ -176,5 +178,3 @@ end
 # @benchmark klu(sparse($A)) seconds=20 # klu, 26.561s
 # @benchmark splu($A) seconds=20 # splu, 3.840 s
 # @benchmark splu(sparse($A)) seconds=20 # splu, 3.889 s
-
-

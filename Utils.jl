@@ -1,5 +1,5 @@
 function plot_benchmark(alg_path, alg_name, df, ns, algs, mat_patterns, xaxis_type)
-    algs_str = ["$a" for a in keys(algs)]
+    algs_str = [String(Symbol(alg))  for alg in algs]
     for n in ns
         p = plot(
             [(
