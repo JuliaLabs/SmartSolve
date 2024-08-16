@@ -20,8 +20,9 @@ function discover!(i, db, mat_patterns, algs, ns)
                 end
                 b = A * ones(size(A,1)) # vector required to measure error
                 # Evaluate different algorithms
-                for (name, alg) in algs
+                for alg in algs
                     try
+                        name = String(Symbol(alg))
                         t = @elapsed res = alg(A)
                         x = res \ b
                         err = norm(A * x - b, 1)
@@ -50,8 +51,9 @@ function discover!(i, db, mat_patterns, algs)
             A = matrixdepot(mat_pattern)
             b = A * ones(size(A,1)) # required to measure error
             # Evaluate different algorithms
-            for (name, alg) in algs
+            for alg in algs
                 try
+                    name = String(Symbol(alg))
                     t = @elapsed res = alg(A)
                     x = res \ b
                     err = norm(A * x - b, 1)
