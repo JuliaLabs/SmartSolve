@@ -18,6 +18,8 @@ using BenchmarkTools
 using DecisionTree
 using BSON
 
+import SmartSolve: compute_feature_values
+
 # OpenBLAS vs MKL
 mkl = true
 if mkl
@@ -44,7 +46,7 @@ mats = [A, B]
 alg_name  = "lu"
 alg_path = "smart$alg_name/"
 smartsolve(alg_path, alg_name, algs;
-           mats = mats, ns = [2^4, 2^8])
+           mats = mats, ns = [2^4, 2^8, 2^12])
 
 # Include the newly generated algorithm
 include("$alg_path/smart$alg_name.jl")

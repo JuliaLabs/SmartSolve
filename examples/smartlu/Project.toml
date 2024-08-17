@@ -1,6 +1,7 @@
 [deps]
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+DecisionTree = "7806a523-6efd-50cb-b5f6-3fa6f1930dbb"
 KLU = "ef3ab10e-7fda-4108-b977-705223b18434"
 MKL = "33e6dc65-8f57-5167-99aa-e5a354878fb2"
 MatrixDepot = "b51810bb-c9f3-55da-ae3c-350fc1fbce05"
