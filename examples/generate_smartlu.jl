@@ -1,17 +1,17 @@
-using MatrixDepot
-using LinearAlgebra
+# SmartSolve aims to significantly accelerate various linear
+# algebra algorithms based on providing better algorithmic
+# and architectural choices.
+# Here, SmartSolve is used to automatically generate an
+# optimized version of LU decomposition: SmartLU.
+
+cd(@__DIR__)
+using Pkg
+Pkg.activate(".")
+
+using SmartSolve
+using SparseArrays
 using KLU
 using SuperLU
-using SparseArrays
-using Interpolations
-using DataFrames
-using OrderedCollections
-using CSV
-using PlotlyJS
-using DecisionTree
-using Random
-using BenchmarkTools
-using BSON
 
 # OpenBLAS vs MKL
 mkl = true
@@ -19,14 +19,6 @@ if mkl
     using MKL
 end
 BLAS.get_config()
-
-include("SmartSolve.jl")
-
-# SmartSolve aims to significantly accelerate various linear
-# algebra algorithms based on providing better algorithmic
-# and architectural choices.
-# Here, SmartSolve is used to automatically generate an
-# optimized version of LU decomposition: SmartLU.
 
 # Define candidate algorithms
 dgetrf(A::Matrix) = lu(A)

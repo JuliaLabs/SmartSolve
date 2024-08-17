@@ -1,3 +1,5 @@
+export makeplots, plot_benchmark
+
 function makeplots(alg_path, alg_name)
     smartdb = CSV.read("$alg_path/smartdb-$alg_name.csv", DataFrame)
     fulldb = CSV.read("$alg_path/fulldb-$alg_name.csv", DataFrame)

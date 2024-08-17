@@ -1,3 +1,8 @@
+name = "SmartSolve"
+uuid = "4fbb3a3c-2fa1-4c19-8d57-bae8bc1e16ac"
+authors = ["JuliaLab"]
+version = "0.1.0"
+
 [deps]
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
