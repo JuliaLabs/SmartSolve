@@ -1,3 +1,5 @@
+export compute_feature_values
+
 all_features = OrderedDict() 
 all_features[:length] = x -> length(x)
 all_features[:n_rows] = x -> size(x, 1)

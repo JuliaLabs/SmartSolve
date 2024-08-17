@@ -1,4 +1,0 @@
-[deps]
-SmartSolve = "4fbb3a3c-2fa1-4c19-8d57-bae8bc1e16ac"
-KLU = "ef3ab10e-7fda-4108-b977-705223b18434"
-SuperLU = "149cae9a-b337-42bd-ac98-00096b14e8a3"

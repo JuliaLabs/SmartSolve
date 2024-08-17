@@ -9,9 +9,14 @@ using Pkg
 Pkg.activate(".")
 
 using SmartSolve
+using LinearAlgebra
 using SparseArrays
 using KLU
 using SuperLU
+using MatrixDepot
+using BenchmarkTools
+using DecisionTree
+using BSON
 
 # OpenBLAS vs MKL
 mkl = true
@@ -37,8 +42,9 @@ mats = [A, B]
 
 # Generate a smart version of your algorithm
 alg_name  = "lu"
-alg_path = "smartalgs/$alg_name"
-smartsolve(alg_path, alg_name, algs; mats = mats)
+alg_path = "smart$alg_name/"
+smartsolve(alg_path, alg_name, algs;
+           mats = mats, ns = [2^4, 2^8])
 
 # Include the newly generated algorithm
 include("$alg_path/smart$alg_name.jl")
