@@ -21,8 +21,8 @@ function smartsolve(alg_path, alg_name, algs;
     # Smart discovery: generate smart discovery database
     fulldb = create_empty_db()
     for i in 1:n_experiments
-    discover!(i, fulldb, builtin_patterns, algs, ns)
-    #discover!(i, fulldb, sp_mm_patterns, algs)
+        discover!(i, fulldb, builtin_patterns, algs, ns)
+        #discover!(i, fulldb, sp_mm_patterns, algs)
     end
     CSV.write("$alg_path/fulldb-$alg_name.csv", fulldb)
 
@@ -31,7 +31,7 @@ function smartsolve(alg_path, alg_name, algs;
     CSV.write("$alg_path/smartdb-$alg_name.csv", smartdb)
 
     # Smart model
-    features = [:length,  :sparsity]
+    features = [:length,  :sparsity, :condnumber]
     features_train, labels_train, 
     features_test, labels_test = create_datasets(smartdb, features)
     smartmodel = train_smart_choice_model(features_train, labels_train)    
@@ -49,9 +49,9 @@ function smartsolve(alg_path, alg_name, algs;
     function smart$alg_name(A; features = features_$alg_name,
             smartmodel = smartmodel_$alg_name,
             algs = algs_$alg_name)
-    fs = compute_feature_values(A; features = features)
-    alg_name = apply_tree(smartmodel, fs)
-    return @eval \$(Symbol(alg_name))(A)
+        fs = compute_feature_values(A; features = features)
+        alg_name = apply_tree(smartmodel, fs)
+        return @eval \$(Symbol(alg_name))(A)
     end"""
 
     open("$alg_path/smart$alg_name.jl", "w") do file

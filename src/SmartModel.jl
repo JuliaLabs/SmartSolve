@@ -17,9 +17,11 @@ end
 
 function train_smart_choice_model(features_train, labels_train)
     # Train full-tree classifier
-    model = build_tree(labels_train, features_train)
+    n_subfeat = 0
+    n_feat = size(features_train[1, :], 1)
+    model = build_tree(labels_train, features_train, n_subfeat, n_feat)
     # Prune tree: merge leaves having >= 90% combined purity (default: 100%)
-    model = prune_tree(model, 0.9)
+    # model = prune_tree(model, 0.9)
     return model
 end
 
