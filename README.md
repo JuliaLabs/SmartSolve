@@ -8,7 +8,7 @@ julia --project=.
 ```
 
 ```julia
-pkg> add https://github.com/JuliaLabs/SmartSolve
+pkg> dev ../..
 pkg> instantiate
 julia> include("generate_smartlu.jl")
 ```
