@@ -45,9 +45,6 @@ SuperLU.splu(A::Matrix) = splu(sparse(A))
 SuperLU.splu(A::SparseMatrixCSC{Int64, Int64}) = splu(Float64.(A))
 SuperLU.splu(A::SparseMatrixCSC{Bool, Int64}) = splu(Float64.(A))
 SuperLU.splu(A::Symmetric) = splu(Float64.(sparse(A.data)))
-compute_feature_values(A::SparseMatrixCSC{Int64, Int64}) = compute_feature_values(Float64.(A)) # Added compatibility for integer matrices
-compute_feature_values(A::SparseMatrixCSC{Bool, Int64}) = compute_feature_values(Float64.(A)) # Added compatibility for boolean matrices
-compute_feature_values(A::Symmetric) = compute_feature_values(Float64.(Matrix((A.data)))) # Added symmetric matrix for feature vals
 algs = [dgetrf, umfpack, klu, splu]
 
 # Define your custom matrices to be included in training

@@ -10,6 +10,7 @@ using DecisionTree
 using Random
 using BenchmarkTools
 using BSON
+using SparseArrays
 
 include("SmartDiscovery.jl")
 include("SmartDB.jl")
