@@ -5,28 +5,39 @@ export smartsolve
 function smartsolve(alg_path, alg_name, algs;
                     n_experiments = 1,
                     ns = [2^4, 2^8, 2^12],
-                    mats = [])
+                    mats = [],
+		    include_singular = false)
 
     # Create result directory
     run(`mkdir -p $alg_path`)
 
     # Save algorithms
     BSON.@save "$alg_path/algs-$alg_name.bson" algs
-
+    
     # Define matrices
-    builtin_patterns = mdlist(:builtin)
-    sp_mm_patterns = filter!(x -> x ∉ mdlist(:builtin), mdlist(:all))
-    mat_patterns = builtin_patterns # [builtin_patterns; sp_mm_patterns]
+    max_entries = 10_000
+    bi_patterns = mdlist(:builtin)
+    sp_patterns = mdlist(sp(:) & @pred(n*m < max_entries))
+    mm_patterns = mdlist(mm(:) & @pred(n*m < max_entries))
 
+    filter!(x -> x != "parallax", bi_patterns) 
+    filter!(x -> x != "invhilb", bi_patterns)
+    filter!(x -> x != "neumann", bi_patterns) # Created out of memory exception
+    filter!(x -> x != "clement", bi_patterns)
+    filter!(x -> x != "wathen", bi_patterns)
+    
     # Smart discovery: generate smart discovery database
     fulldb = create_empty_db()
     for i in 1:n_experiments
-        discover!(i, fulldb, builtin_patterns, algs, ns)
-        #discover!(i, fulldb, sp_mm_patterns, algs)
+        discover!(i, fulldb, bi_patterns, algs, true; ns = ns)
+        discover!(i, fulldb, sp_patterns, algs, include_singular)
+	discover!(i, fulldb, mm_patterns, algs, include_singular)
     end
     CSV.write("$alg_path/fulldb-$alg_name.csv", fulldb)
 
     # Smart DB: filter complete DB for faster algorithmic options
+    mat_patterns = vcat(bi_patterns, sp_patterns, mm_patterns)
+    push!(ns, 0)
     smartdb = get_smart_choices(fulldb, mat_patterns, ns)
     CSV.write("$alg_path/smartdb-$alg_name.csv", smartdb)
 
@@ -61,74 +72,68 @@ function smartsolve(alg_path, alg_name, algs;
     return fulldb, smartdb, smartmodel, smartalg
 end
 
-function discover!(i, db, mat_patterns, algs, ns)
-    for (j, mat_pattern) in enumerate(mat_patterns)
+
+function generate_matrix(mat_pattern; n = 0)
+    if n == 0
+        return matrixdepot(mat_pattern)
+    else
+        if mat_pattern in ["blur", "poisson", "binomial"]
+            n′ = round(Int, sqrt(n))
+            n′′ = n′^2
+        else
+            n′ = n
+            n′′ = n
+        end
+        A = []
+        try
+            A = matrixdepot(mat_pattern, n′)
+            if size(A) != (n′′, n′′)
+                throw("Check matrix size: $(mat_pattern), ($n, $n) vs $(size(A))")
+            end
+        catch e
+            println("Error: $(mat_pattern), $n", typeof(e))
+        end
+    end
+    return convert.(Float64, A)
+end
+
+
+function discover!(i, db, mat_patterns, algs, include_singular; ns = [0])
+    for (j, mat_pattern) in enumerate(mat_patterns)    
         for n in ns
             println("Experiment:$i, pattern number:$j, pattern:$mat_pattern, no. of cols or rows:$n.")
             flush(stdout)
-            # Generate matrix
-            if mat_pattern in ["blur", "poisson"]
-                n′ = round(Int, sqrt(n))
-                n′′ = n′^2
-            else
-                n′ = n
-                n′′ = n
+            A = generate_matrix(mat_pattern; n = n)
+            features = compute_feature_values(A)
+            if !include_singular && features[4] < min(size(A, 1), size(A, 2))
+                println("Singular Matrix!")
+                flush(stdout) # Possibly fix in the future
+                continue
             end
-            try
-                A = matrixdepot(mat_pattern, n′)
-                if size(A) != (n′′, n′′)
-                    throw("Check matrix size: $(mat_pattern), ($n, $n) vs $(size(A))")
-                end
-                b = A * ones(size(A,1)) # vector required to measure error
-                # Evaluate different algorithms
-                for alg in algs
-                    try
-                        name = String(Symbol(alg))
-                        t = @elapsed res = alg(A)
-                        x = res \ b
-                        err = norm(A * x - b, 1)
-                        row  = vcat([i, mat_pattern],
-                                    compute_feature_values(A),
-                                    [name, t, err])
-                        push!(db, row)
-                    catch e
-                        println("$e. $(mat_pattern), $n, $name")
-                    end
-                end
-            catch e
-                println("$e. $(mat_pattern)")
-            end
-            #GC.gc()
-        end
-    end
-end
-
-function discover!(i, db, mat_patterns, algs)
-    for (j, mat_pattern) in enumerate(mat_patterns)   
-        println("Experiment:$i, pattern number:$j, pattern:$mat_pattern.")
-        flush(stdout)
-        try
-            # Generate matrix
-            A = matrixdepot(mat_pattern)
-            b = A * ones(size(A,1)) # required to measure error
+            # Generate vector b (required to measure error)
+            b = A * ones(size(A, 2))
             # Evaluate different algorithms
             for alg in algs
+                alg_name = String(Symbol(alg))
+                if alg_name != "umfpack" && size(A, 1) != size(A, 2) # if the algorithm isn't umfpack, then don't run the algorithm if the matrix isn't square
+                    continue
+                end
                 try
-                    name = String(Symbol(alg))
                     t = @elapsed res = alg(A)
-                    x = res \ b
-                    err = norm(A * x - b, 1)
-                    row  = vcat([i, mat_pattern],
-                                compute_feature_values(A),
-                                [name, t, err])
+                    err = 0
+                    row = vcat([i, mat_pattern],
+                            features,
+                            [alg_name, t, err])
                     push!(db, row)
                 catch e
-                    println("$e. $(mat_pattern), $name")
+                    if n == 0
+                        println("Error: $(mat_pattern), $(size(A)), $alg_name", typeof(e))
+                    else
+                        println("Error: $(mat_pattern), $n, $alg_name", typeof(e))
+                    end
                 end
             end
-        catch e
-            println("$e. $(mat_pattern)")
+            GC.gc()
         end
-        GC.gc()
     end
 end

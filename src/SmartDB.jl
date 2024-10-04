@@ -30,6 +30,10 @@ function compute_feature_values(A; features = keys(all_features))
     return feature_vals
 end
 
+compute_feature_values(A::SparseMatrixCSC{Int64, Int64}) = compute_feature_values(Float64.(A)) # Added compatibility fo>
+compute_feature_values(A::SparseMatrixCSC{Bool, Int64}) = compute_feature_values(Float64.(A)) # Added compatibility for>
+compute_feature_values(A::Symmetric) = compute_feature_values(Float64.(Matrix((A.data)))) # Added symmetric matrix for >
+
 function create_empty_db()
     df1 = DataFrame(n_experiment = Int[],
                     pattern = String[])
@@ -47,11 +51,15 @@ function get_smart_choices(db, mat_patterns, ns)
     db_opt = create_empty_db()
     for mat_pattern in mat_patterns
         for n in ns
-            db′ = @views db[(db.pattern .== mat_pattern) .&&
+	    if n == 0
+		db_filtered = @views db[(db.pattern .== mat_pattern), :]
+            else
+		db_filtered = @views db[(db.pattern .== mat_pattern) .&&
                             (db.n_cols .== n), :]
-            if length(db′.time) > 0
-                min_time = minimum(db′.time)
-                min_time_row = db′[db′.time .== min_time, :][1, :]
+            end
+	    if length(db_filtered.time) > 0
+                min_time = minimum(db_filtered.time)
+                min_time_row = db_filtered[db_filtered.time .== min_time, :][1, :]
                 push!(db_opt, min_time_row)
             end
         end
