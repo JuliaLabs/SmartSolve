@@ -56,7 +56,7 @@ mats = [A, B]
 # Generate a smart version of your algorithm
 alg_name  = "lu"
 alg_path = "smart$alg_name/"
-smartsolve(alg_path, alg_name, algs;
+smartsolve(alg_path, alg_name, algs; n_experiments = 3,
            mats = mats, ns = [2^4, 2^8])
 
 # Include the newly generated algorithm

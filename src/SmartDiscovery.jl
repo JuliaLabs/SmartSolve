@@ -6,7 +6,8 @@ function smartsolve(alg_path, alg_name, algs;
                     n_experiments = 1,
                     ns = [2^4, 2^8, 2^12],
                     mats = [],
-		    include_singular = false)
+		    include_singular = false,
+		    error_calc = nothing)
 
     # Create result directory
     run(`mkdir -p $alg_path`)
@@ -25,13 +26,13 @@ function smartsolve(alg_path, alg_name, algs;
     filter!(x -> x != "neumann", bi_patterns) # Created out of memory exception
     filter!(x -> x != "clement", bi_patterns)
     filter!(x -> x != "wathen", bi_patterns)
-    
+
     # Smart discovery: generate smart discovery database
     fulldb = create_empty_db()
     for i in 1:n_experiments
-        discover!(i, fulldb, bi_patterns, algs, true; ns = ns)
-        discover!(i, fulldb, sp_patterns, algs, include_singular)
-	discover!(i, fulldb, mm_patterns, algs, include_singular)
+        discover!(i, fulldb, bi_patterns, algs, true, error_calc; ns = ns)
+        discover!(i, fulldb, sp_patterns, algs, include_singular, error_calc)
+	discover!(i, fulldb, mm_patterns, algs, include_singular, error_calc)
     end
     CSV.write("$alg_path/fulldb-$alg_name.csv", fulldb)
 
@@ -98,7 +99,7 @@ function generate_matrix(mat_pattern; n = 0)
 end
 
 
-function discover!(i, db, mat_patterns, algs, include_singular; ns = [0])
+function discover!(i, db, mat_patterns, algs, include_singular, error_calc; ns = [0])
     for (j, mat_pattern) in enumerate(mat_patterns)    
         for n in ns
             println("Experiment:$i, pattern number:$j, pattern:$mat_pattern, no. of cols or rows:$n.")
@@ -120,7 +121,11 @@ function discover!(i, db, mat_patterns, algs, include_singular; ns = [0])
                 end
                 try
                     t = @elapsed res = alg(A)
-                    err = 0
+		    if error_calc == nothing
+			err = default_error_calc(alg, A)
+		    else
+                        err = error_calc(alg, A)
+		    end
                     row = vcat([i, mat_pattern],
                             features,
                             [alg_name, t, err])
@@ -132,8 +137,15 @@ function discover!(i, db, mat_patterns, algs, include_singular; ns = [0])
                         println("Error: $(mat_pattern), $n, $alg_name", typeof(e))
                     end
                 end
-            end
-            GC.gc()
+            	GC.gc()
+	    end
         end
     end
+end
+
+function default_error_calc(alg, A)
+    n = size(A, 1)
+    b = rand(n, 1)
+    x = alg(A) \ b
+    return norm((b-A*x)/(norm(b)+norm(A)*norm(x)))
 end
