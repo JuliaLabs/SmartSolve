@@ -5,11 +5,12 @@ using LinearAlgebra
 using DataFrames
 using OrderedCollections
 using CSV
-using PlotlyJS
+using CairoMakie
 using DecisionTree
 using Random
 using BenchmarkTools
 using BSON
+using SparseArrays
 
 include("SmartDiscovery.jl")
 include("SmartDB.jl")

@@ -45,9 +45,6 @@ SuperLU.splu(A::Matrix) = splu(sparse(A))
 SuperLU.splu(A::SparseMatrixCSC{Int64, Int64}) = splu(Float64.(A))
 SuperLU.splu(A::SparseMatrixCSC{Bool, Int64}) = splu(Float64.(A))
 SuperLU.splu(A::Symmetric) = splu(Float64.(sparse(A.data)))
-compute_feature_values(A::SparseMatrixCSC{Int64, Int64}) = compute_feature_values(Float64.(A)) # Added compatibility for integer matrices
-compute_feature_values(A::SparseMatrixCSC{Bool, Int64}) = compute_feature_values(Float64.(A)) # Added compatibility for boolean matrices
-compute_feature_values(A::Symmetric) = compute_feature_values(Float64.(Matrix((A.data)))) # Added symmetric matrix for feature valsdgetrf(A::SparseMatrixCSC) = lu(Matrix(A))
 algs = [dgetrf, umfpack, klu, splu]
 
 # Define your custom matrices to be included in training
@@ -59,8 +56,8 @@ mats = [A, B]
 # Generate a smart version of your algorithm
 alg_name  = "lu"
 alg_path = "smart$alg_name/"
-smartsolve(alg_path, alg_name, algs;
-           mats = mats, ns = [2^4, 2^8, 2^12])
+smartsolve(alg_path, alg_name, algs; n_experiments = 3,
+           mats = mats, ns = [2^4, 2^8])
 
 # Include the newly generated algorithm
 include("$alg_path/smart$alg_name.jl")
@@ -69,14 +66,19 @@ include("$alg_path/smart$alg_name.jl")
 n = 2^12;
 benchmark_seconds = 2 # 200
 A = matrixdepot("poisson", round(Int, sqrt(n))); # nxn
-@benchmark lu($A) seconds=benchmark_seconds
-@benchmark smartlu($A) seconds=benchmark_seconds
+println("Benchmark Time for Regular LU Decomposition!")
+display(@benchmark lu($A) seconds=benchmark_seconds)
+println("Benchmark Time for Smart LU Decomposition!")
+display(@benchmark smartlu($A) seconds=benchmark_seconds)
 
 # Benchmark Backslash vs SmartBackslash (via SmartLU)
 b = rand(n);
-@benchmark $A\$b seconds=benchmark_seconds
-@benchmark lu($A)\$b seconds=benchmark_seconds
-@benchmark smartlu($A)\$b seconds=benchmark_seconds
+println("Benchmark Time for Backslash!")
+display(@benchmark $A\$b seconds=benchmark_seconds)
+println("Benchmark Time for LU Backslash!")
+display(@benchmark lu($A)\$b seconds=benchmark_seconds)
+println("Benchmark Time for SmartBackslash!")
+display(@benchmark smartlu($A)\$b seconds=benchmark_seconds)
 
 # Compute errors
 x = A \ b;
