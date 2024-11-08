@@ -66,7 +66,7 @@ function smartfeatures(df)
 #1. Calculate feature importance
     DecisionTreeClassifier = @load DecisionTreeClassifier pkg=DecisionTree
     model = DecisionTreeClassifier(max_depth=3, min_samples_split=3)
-    fs = [:length, :n_rows, :n_cols, :rank, :cond,
+    fs = [:length, :n_rows, :n_cols, :rank, :condnumber,
         :sparsity, :isdiag, :issymmetric, :ishermitian, :isposdef,
         :istriu, :istril]
     fs_vals = [df[:, f] for f in fs]
@@ -174,18 +174,25 @@ function smartfeatures(df)
         colorbar_title = "Importance-time rate")
     savefig("featurebench.png") #change file location
 
-#------------------------------------------------------------------------------
+# #------------------------------------------------------------------------------
     #sort features by score
-#     perm = sortperm(score)
-#     fil[perm]
+    perm = sortperm(score)
+    fil[perm]
 
-#     #feature selection algorithm
-#     while i < length(fs) & (e > e_tol | t > t_tol)
-#         curr_fs = fs[1:i]
-#         e,t = train(mach, curr_fs, df)
-#         i += 1
-#     end
-#     #NOT FINISHED
+    #feature selection algorithm
+    i = 1
+    e = 0
+    t = 10
+    e_tol, t_tol = .05, 2
+    while i < length(fs) & (e > e_tol | t > t_tol)
+        curr_fil = fil[1:i]
 
-#     return curr_fs
+        features_train, labels_train,
+        features_test, labels_test = create_datasets(smartdb, curr_fil)
+        smartmodel = train_smart_choice_model(features_train, labels_train)
+        e = 1 - accuracy(test_smart_choice_model(smartmodel, features_test, labels_test))
+        i += 1
+    end
+
+    return curr_fil
 end

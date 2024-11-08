@@ -59,8 +59,10 @@ mats = [A, B]
 # Generate a smart version of your algorithm
 alg_name  = "lu"
 alg_path = "smart$alg_name/"
+# smartsolve(alg_path, alg_name, algs;
+#            mats = mats, ns = [2^4, 2^8, 2^12])
 smartsolve(alg_path, alg_name, algs;
-           mats = mats, ns = [2^4, 2^8, 2^12])
+            mats=mats, ns=[2^4, 2^8])
 
 # Include the newly generated algorithm
 include("$alg_path/smart$alg_name.jl")
@@ -88,4 +90,3 @@ norm(A * x - b, 1)
 
 # Plot results
 makeplots(alg_path, alg_name)
-

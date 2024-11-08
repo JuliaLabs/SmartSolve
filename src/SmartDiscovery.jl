@@ -32,6 +32,7 @@ function smartsolve(alg_path, alg_name, algs;
 
     # Smart model
     features = smartfeatures(smartdb)
+    # features = [:length, :sparsity, :condnumber]
     features_train, labels_train,
     features_test, labels_test = create_datasets(smartdb, features)
     smartmodel = train_smart_choice_model(features_train, labels_train)
@@ -39,6 +40,10 @@ function smartsolve(alg_path, alg_name, algs;
     BSON.@save "$alg_path/smartmodel-$alg_name.bson" smartmodel
 
     test_smart_choice_model(smartmodel, features_test, labels_test)
+
+    println(typeof(test_smart_choice_model(smartmodel, features_test, labels_test)))
+    println(test_smart_choice_model(smartmodel, features_test, labels_test))
+
     print_tree(smartmodel, 5) # Print of the tree, to a depth of 5 nodes
 
     # Smart algorithm
