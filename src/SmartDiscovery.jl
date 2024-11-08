@@ -8,7 +8,7 @@ function smartsolve(alg_path, alg_name, algs;
                     mats = [])
 
     # Create result directory
-    run(`mkdir -p $alg_path`)
+    mkpath("$alg_path")
 
     # Save algorithms
     BSON.@save "$alg_path/algs-$alg_name.bson" algs
@@ -31,10 +31,10 @@ function smartsolve(alg_path, alg_name, algs;
     CSV.write("$alg_path/smartdb-$alg_name.csv", smartdb)
 
     # Smart model
-    features = [:length,  :sparsity, :condnumber]
-    features_train, labels_train, 
+    features = smartfeatures(smartdb)
+    features_train, labels_train,
     features_test, labels_test = create_datasets(smartdb, features)
-    smartmodel = train_smart_choice_model(features_train, labels_train)    
+    smartmodel = train_smart_choice_model(features_train, labels_train)
     BSON.@save "$alg_path/features-$alg_name.bson" features
     BSON.@save "$alg_path/smartmodel-$alg_name.bson" smartmodel
 
@@ -104,7 +104,7 @@ function discover!(i, db, mat_patterns, algs, ns)
 end
 
 function discover!(i, db, mat_patterns, algs)
-    for (j, mat_pattern) in enumerate(mat_patterns)   
+    for (j, mat_pattern) in enumerate(mat_patterns)
         println("Experiment:$i, pattern number:$j, pattern:$mat_pattern.")
         flush(stdout)
         try
