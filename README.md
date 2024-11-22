@@ -1,4 +1,4 @@
-# SmartSolve. Proof of concept.
+# SmartSolve
 
 SmartSolve aims to significantly accelerate various linear algebra algorithms based on providing better algorithmic and architectural choices. In the following example SmartSolve is used to automatically generate SmartLU, an optimized version of the LU decomposition.
 
