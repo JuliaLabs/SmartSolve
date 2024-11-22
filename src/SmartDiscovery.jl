@@ -30,9 +30,10 @@ function smartsolve(alg_path, alg_name, algs;
     # Smart discovery: generate smart discovery database
     fulldb = create_empty_db()
     for i in 1:n_experiments
-        discover!(i, fulldb, bi_patterns, algs, true, error_calc; ns = ns)
-        discover!(i, fulldb, sp_patterns, algs, include_singular, error_calc)
-	discover!(i, fulldb, mm_patterns, algs, include_singular, error_calc)
+    	index = 1
+        index = discover!(i, fulldb, bi_patterns, algs, true, error_calc, index; ns = ns)
+        index = discover!(i, fulldb, sp_patterns, algs, include_singular, error_calc, index)
+	index = discover!(i, fulldb, mm_patterns, algs, include_singular, error_calc, index)
     end
     CSV.write("$alg_path/fulldb-$alg_name.csv", fulldb)
 
@@ -99,11 +100,16 @@ function generate_matrix(mat_pattern; n = 0)
 end
 
 
-function discover!(i, db, mat_patterns, algs, include_singular, error_calc; ns = [0])
+function discover!(i, db, mat_patterns, algs, include_singular, error_calc, index; ns = [0])
     for (j, mat_pattern) in enumerate(mat_patterns)    
         for n in ns
-            println("Experiment:$i, pattern number:$j, pattern:$mat_pattern, no. of cols or rows:$n.")
-            flush(stdout)
+	    if n == 0
+            	println("Experiment:$i, Subexperiment:$index, pattern:$mat_pattern.")
+	    else
+		println("Experiment:$i, Subexperiment:$index, pattern:$mat_pattern, no. of cols or rows:$n.")
+	    end
+	    index += 1
+	    flush(stdout)
             A = generate_matrix(mat_pattern; n = n)
             features = compute_feature_values(A)
             if !include_singular && features[4] < min(size(A, 1), size(A, 2))
@@ -141,6 +147,7 @@ function discover!(i, db, mat_patterns, algs, include_singular, error_calc; ns =
 	    end
         end
     end
+    return index
 end
 
 function default_error_calc(alg, A)
