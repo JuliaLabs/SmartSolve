@@ -6,14 +6,14 @@ using DataFrames
 using OrderedCollections
 using CSV
 using PlotlyJS
-using DecisionTree
+using Plots
 using Random
 using BenchmarkTools
 using BSON
 
 using ShapML
 using MLJ
-using Plots
+using MLJDecisionTreeInterface
 using TreeRecipe
 using CategoricalArrays
 using SparseArrays

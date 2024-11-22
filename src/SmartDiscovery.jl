@@ -33,18 +33,17 @@ function smartsolve(alg_path, alg_name, algs;
     # Smart model
     features = smartfeatures(smartdb)
     # features = [:length, :sparsity, :condnumber]
+    # features = [:length, :n_rows, :n_cols, :rank, :condnumber,
+    #     :sparsity, :isdiag, :issymmetric, :ishermitian, :isposdef,
+    #     :istriu, :istril]
     features_train, labels_train,
     features_test, labels_test = create_datasets(smartdb, features)
-    smartmodel = train_smart_choice_model(features_train, labels_train)
+    smartmodel = train_smart_choice_model(features_train, labels_train, features)
     BSON.@save "$alg_path/features-$alg_name.bson" features
     BSON.@save "$alg_path/smartmodel-$alg_name.bson" smartmodel
 
-    test_smart_choice_model(smartmodel, features_test, labels_test)
-
-    println(typeof(test_smart_choice_model(smartmodel, features_test, labels_test)))
-    println(test_smart_choice_model(smartmodel, features_test, labels_test))
-
-    print_tree(smartmodel, 5) # Print of the tree, to a depth of 5 nodes
+    test_smart_choice_model(smartmodel, features_test, labels_test, features)
+    # print_tree(smartmodel, 5) # Print of the tree, to a depth of 5 nodes
 
     # Smart algorithm
     smartalg = """
@@ -54,8 +53,13 @@ function smartsolve(alg_path, alg_name, algs;
     function smart$alg_name(A; features = features_$alg_name,
             smartmodel = smartmodel_$alg_name,
             algs = algs_$alg_name)
-        fs = compute_feature_values(A; features = features)
-        alg_name = apply_tree(smartmodel, fs)
+        # fs = compute_feature_values(A; features = features)
+        # alg_name = apply_tree(smartmodel, fs)
+        # return @eval \$(Symbol(alg_name))(A)
+        fs_vals = compute_feature_values(A; features = features)
+        fs_vals = [[f] for f in fs_vals]
+        fs = NamedTuple{Tuple(features)}(Array(fs_vals))
+        alg_name = first(predict_mode(smartmodel, fs))
         return @eval \$(Symbol(alg_name))(A)
     end"""
 

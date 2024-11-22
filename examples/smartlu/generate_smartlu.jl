@@ -15,7 +15,8 @@ using KLU
 using SuperLU
 using MatrixDepot
 using BenchmarkTools
-using DecisionTree
+using MLJ
+using MLJDecisionTreeInterface
 using BSON
 
 import SmartSolve: compute_feature_values
@@ -56,6 +57,8 @@ A = rand(n, n)
 B = sprand(n, n, 0.3)
 mats = [A, B]
 
+#Custom features (in progress)
+
 # Generate a smart version of your algorithm
 alg_name  = "lu"
 alg_path = "smart$alg_name/"
@@ -89,4 +92,4 @@ x = smartlu(A) \ b;
 norm(A * x - b, 1)
 
 # Plot results
-makeplots(alg_path, alg_name)
+# makeplots(alg_path, alg_name)

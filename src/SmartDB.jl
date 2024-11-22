@@ -1,12 +1,20 @@
 export compute_feature_values
+export sparsity
+export condnumber
+
+sparsity(x) = count(iszero, x) / length(x)
+condnumber(x::Matrix) = cond(x, 2)
+condnumber(x::SparseMatrixCSC) = cond(Array(x), 2)
 
 all_features = OrderedDict()
 all_features[:length] = x -> length(x)
 all_features[:n_rows] = x -> size(x, 1)
 all_features[:n_cols] = x -> size(x, 2)
 all_features[:rank] = x -> rank(x)
-all_features[:condnumber] = x -> cond(Array(x), 2)
-all_features[:sparsity] = x -> count(iszero, x) / length(x)
+# all_features[:condnumber] = x -> cond(Array(x), 2)
+all_features[:condnumber] = x -> condnumber(x)
+# all_features[:sparsity] = x -> count(iszero, x) / length(x)
+all_features[:sparsity] = x -> sparsity(x)
 all_features[:isdiag] = x -> Float64(isdiag(x))
 all_features[:issymmetric] = x -> Float64(issymmetric(x))
 all_features[:ishermitian] = x -> Float64(ishermitian(x))
@@ -72,7 +80,7 @@ function smartfeatures(df)
     fs_vals = [df[:, f] for f in fs]
     X = NamedTuple{Tuple(fs)}(fs_vals)
     y = CategoricalArray(String.(df[:, :pattern]))
-    mach = machine(model, X, y) |> fit!
+    mach = machine(model, X, y) |> MLJ.fit!
     #------------------------------------------------------------------------------
     #PREVIOUS
     fi = feature_importances(mach)
@@ -98,26 +106,22 @@ function smartfeatures(df)
 
     # fi = combine(groupby(data_shap, :feature_name))[:, [:feature_name, :shap_effect]]
     #------------------------------------------------------------------------------
-    fil = String.(map(x->x[1], fi))
+    fil = map(x->x[1], fi)
     fiv = map(x->x[2], fi)
 
     nn = count(x -> x != 0, fiv) # include all nonzero features
     fi = fi[1:nn]
     fil = fil[1:nn]
     fiv = fiv[1:nn]
-
-    println(fi)
-
-    sparsity(x) = count(iszero, x) / length(x)
-    condnumber(x::Matrix) = cond(A, 2)
-    condnumber(x::SparseMatrixCSC) = cond(Array(A), 2)
+    println("FIs:", fi)
 
 #------------------------------------------------------------------------------
 #2. computes the computational cost (score) of each feature.
     # Compute feature times
     ft = zeros(nn)
     c = zeros(nn)
-    A = []
+    # A = []
+    global A = []
     for i in 1:size(df, 1)
         p = df[i, :pattern]
         n = df[i, :n_rows]
@@ -130,7 +134,8 @@ function smartfeatures(df)
         end
         println("$p, $n")
         try
-            global A = convert.(Float64,matrixdepot(p, n′))
+            A = convert.(Float64, matrixdepot(p, n′))
+            # global A = convert.(Float64,matrixdepot(p, n′))
             if size(A) != (n′′, n′′)
                 throw("Check matrix size: $(p), ($n, $n) vs $(size(A))")
             end
@@ -148,51 +153,58 @@ function smartfeatures(df)
     # Compute Score
     score = fiv ./ ftm
 
-    # Plot
-    plot()
-    shapes = [:circle, :rect, :diamond, :star5, :utriangle]
-    colors = palette(:tab10)
-    for i in 1:nn
-        plot!( [fiv[i]],
-            [ftm[i]],
-            zcolor=[score[i]],
-            color=:viridis,
-            seriestype = :scatter,
-            thickness_scaling = 1.35,
-            markersize = 7,
-            markerstrokewidth = 0,
-            markershapes = shapes[i],
-            label=fil[i])
-    end
-    plot!(dpi = 300,
-        label = "",
-        legend=:topleft,
-        yscale=:log10,
-        xlabel = "Shapley-based feature importance", #changed name
-        ylabel = "Time [s]",
-        clims =(minimum(score), maximum(score)),
-        colorbar_title = "Importance-time rate")
-    savefig("featurebench.png") #change file location
+    println(ftm)
+    println(score)
 
-# #------------------------------------------------------------------------------
+    # # Plot
+    # Plots.plot()
+    # shapes = [:circle, :rect, :diamond, :star5, :utriangle]
+    # colors = palette(:tab10)
+    # for i in 1:nn
+    #     plot!( [fiv[i]],
+    #         [ftm[i]],
+    #         zcolor=[score[i]],
+    #         color=:viridis,
+    #         seriestype = :scatter,
+    #         thickness_scaling = 1.35,
+    #         markersize = 7,
+    #         markerstrokewidth = 0,
+    #         markershapes = shapes[i],
+    #         label=String.fil[i])
+    # end
+    # plot!(dpi = 300,
+    #     label = "",
+    #     legend=:topleft,
+    #     yscale=:log10,
+    #     xlabel = "Shapley-based feature importance", #changed name
+    #     ylabel = "Time [s]",
+    #     clims =(minimum(score), maximum(score)),
+    #     colorbar_title = "Importance-time rate")
+    # Plots.savefig("featurebench.png") #change file location
+
+#------------------------------------------------------------------------------
     #sort features by score
-    perm = sortperm(score)
-    fil[perm]
+    perm = reverse(sortperm(score))
+    fil = fil[perm]
+    ftm = ftm[perm]
 
     #feature selection algorithm
     i = 1
-    e = 0
-    t = 10
-    e_tol, t_tol = .05, 2
-    while i < length(fs) & (e > e_tol | t > t_tol)
+    e = 100
+    t = 100
+    e_tol, t_tol = 0, .002
+    println(fil)
+    while i < length(fil) && (e > e_tol || t > t_tol)
         curr_fil = fil[1:i]
 
         features_train, labels_train,
-        features_test, labels_test = create_datasets(smartdb, curr_fil)
-        smartmodel = train_smart_choice_model(features_train, labels_train)
-        e = 1 - accuracy(test_smart_choice_model(smartmodel, features_test, labels_test))
+        features_test, labels_test = create_datasets(df, curr_fil)
+        smartmodel = train_smart_choice_model(features_train, labels_train, curr_fil)
+        e = 1 - accuracy(test_smart_choice_model(smartmodel, features_test, labels_test, curr_fil))
+        t = sum(ftm[1:i])
+        println("i:$i, e:$e, t:$t")
         i += 1
     end
 
-    return curr_fil
+    return fil[1:i-1]
 end
