@@ -26,7 +26,7 @@ function train_smart_choice_model(features_train, labels_train, features)
     # model = build_tree(labels_train, features_train, n_subfeat, n_feat)
     # # Prune tree: merge leaves having >= 90% combined purity (default: 100%)
     # model = prune_tree(model, 0.9)
-    DecisionTreeClassifier = @load DecisionTreeClassifier pkg = DecisionTree
+    DecisionTreeClassifier = @load DecisionTreeClassifier pkg = DecisionTree verbosity=0
     model = DecisionTreeClassifier(max_depth=3, min_samples_split=3)
     fs_vals = [features_train[:, f] for f in features]
     X = NamedTuple{Tuple(features)}(fs_vals)

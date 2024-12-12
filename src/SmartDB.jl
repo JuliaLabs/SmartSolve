@@ -11,9 +11,7 @@ all_features[:length] = x -> length(x)
 all_features[:n_rows] = x -> size(x, 1)
 all_features[:n_cols] = x -> size(x, 2)
 all_features[:rank] = x -> rank(x)
-# all_features[:condnumber] = x -> cond(Array(x), 2)
 all_features[:condnumber] = x -> condnumber(x)
-# all_features[:sparsity] = x -> count(iszero, x) / length(x)
 all_features[:sparsity] = x -> sparsity(x)
 all_features[:isdiag] = x -> Float64(isdiag(x))
 all_features[:issymmetric] = x -> Float64(issymmetric(x))
@@ -67,12 +65,9 @@ function get_smart_choices(db, mat_patterns, ns)
     return db_opt
 end
 
-#------------------------------------------------------------------------------
-function smartfeatures(df)
-#Computes the contribution of each feature to reduce the error using Shapley values.
-#------------------------------------------------------------------------------
-#1. Calculate feature importance
-    DecisionTreeClassifier = @load DecisionTreeClassifier pkg=DecisionTree
+#Smart Features: computes the contribution of each feature to reduce the error using Shapley values.
+function smartfeatures(df, alg_path)
+    DecisionTreeClassifier = @load DecisionTreeClassifier pkg=DecisionTree verbosity=0
     model = DecisionTreeClassifier(max_depth=3, min_samples_split=3)
     fs = [:length, :n_rows, :n_cols, :rank, :condnumber,
         :sparsity, :isdiag, :issymmetric, :ishermitian, :isposdef,
@@ -81,8 +76,8 @@ function smartfeatures(df)
     X = NamedTuple{Tuple(fs)}(fs_vals)
     y = CategoricalArray(String.(df[:, :pattern]))
     mach = machine(model, X, y) |> MLJ.fit!
-    #------------------------------------------------------------------------------
-    #PREVIOUS
+
+    #Compute feature time-averaged importance
     fi = feature_importances(mach)
     #------------------------------------------------------------------------------
     # #NEW
@@ -109,18 +104,14 @@ function smartfeatures(df)
     fil = map(x->x[1], fi)
     fiv = map(x->x[2], fi)
 
-    nn = count(x -> x != 0, fiv) # include all nonzero features
+    nn = count(x -> x != 0, fiv)
     fi = fi[1:nn]
     fil = fil[1:nn]
     fiv = fiv[1:nn]
     println("FIs:", fi)
 
-#------------------------------------------------------------------------------
-#2. computes the computational cost (score) of each feature.
-    # Compute feature times
     ft = zeros(nn)
     c = zeros(nn)
-    # A = []
     global A = []
     for i in 1:size(df, 1)
         p = df[i, :pattern]
@@ -135,7 +126,6 @@ function smartfeatures(df)
         println("$p, $n")
         try
             A = convert.(Float64, matrixdepot(p, n′))
-            # global A = convert.(Float64,matrixdepot(p, n′))
             if size(A) != (n′′, n′′)
                 throw("Check matrix size: $(p), ($n, $n) vs $(size(A))")
             end
@@ -150,50 +140,44 @@ function smartfeatures(df)
     end
     ftm = ft ./ c
 
-    # Compute Score
     score = fiv ./ ftm
-
-    println(ftm)
-    println(score)
-
-    # # Plot
-    # Plots.plot()
-    # shapes = [:circle, :rect, :diamond, :star5, :utriangle]
-    # colors = palette(:tab10)
-    # for i in 1:nn
-    #     plot!( [fiv[i]],
-    #         [ftm[i]],
-    #         zcolor=[score[i]],
-    #         color=:viridis,
-    #         seriestype = :scatter,
-    #         thickness_scaling = 1.35,
-    #         markersize = 7,
-    #         markerstrokewidth = 0,
-    #         markershapes = shapes[i],
-    #         label=String.fil[i])
-    # end
-    # plot!(dpi = 300,
-    #     label = "",
-    #     legend=:topleft,
-    #     yscale=:log10,
-    #     xlabel = "Shapley-based feature importance", #changed name
-    #     ylabel = "Time [s]",
-    #     clims =(minimum(score), maximum(score)),
-    #     colorbar_title = "Importance-time rate")
-    # Plots.savefig("featurebench.png") #change file location
-
-#------------------------------------------------------------------------------
-    #sort features by score
     perm = reverse(sortperm(score))
     fil = fil[perm]
     ftm = ftm[perm]
 
-    #feature selection algorithm
+    println(fil)
+
+    # Plot
+    Plots.plot()
+    shapes = [:circle, :rect, :diamond, :star5, :utriangle]
+    colors = palette(:tab10)
+    for i in 1:nn
+        plot!( [fiv[i]],
+            [ftm[i]],
+            zcolor=[score[i]],
+            color=:viridis,
+            seriestype = :scatter,
+            thickness_scaling = 1.35,
+            markersize = 7,
+            markerstrokewidth = 0,
+            markershapes = shapes[i],
+            label=String(fil[i]))
+    end
+    plot!(dpi = 300,
+        label = "",
+        legend=:topleft,
+        yscale=:log10,
+        xlabel = "MLJ-based feature importance",
+        ylabel = "Time [s]",
+        clims =(minimum(score), maximum(score)),
+        colorbar_title = "Importance-time rate")
+    Plots.savefig("$alg_path/featurebench.png")
+
+    #Forward selection algorithm
     i = 1
     e = 100
     t = 100
     e_tol, t_tol = 0, .002
-    println(fil)
     while i < length(fil) && (e > e_tol || t > t_tol)
         curr_fil = fil[1:i]
 
@@ -202,7 +186,7 @@ function smartfeatures(df)
         smartmodel = train_smart_choice_model(features_train, labels_train, curr_fil)
         e = 1 - accuracy(test_smart_choice_model(smartmodel, features_test, labels_test, curr_fil))
         t = sum(ftm[1:i])
-        println("i:$i, e:$e, t:$t")
+        println("features: $curr_fil, error: $e, time: $t")
         i += 1
     end
 

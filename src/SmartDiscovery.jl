@@ -31,11 +31,7 @@ function smartsolve(alg_path, alg_name, algs;
     CSV.write("$alg_path/smartdb-$alg_name.csv", smartdb)
 
     # Smart model
-    features = smartfeatures(smartdb)
-    # features = [:length, :sparsity, :condnumber]
-    # features = [:length, :n_rows, :n_cols, :rank, :condnumber,
-    #     :sparsity, :isdiag, :issymmetric, :ishermitian, :isposdef,
-    #     :istriu, :istril]
+    features = smartfeatures(smartdb, alg_path)
     features_train, labels_train,
     features_test, labels_test = create_datasets(smartdb, features)
     smartmodel = train_smart_choice_model(features_train, labels_train, features)

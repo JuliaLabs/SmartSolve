@@ -11,7 +11,7 @@ using Random
 using BenchmarkTools
 using BSON
 
-using ShapML
+# using ShapML
 using MLJ
 using MLJDecisionTreeInterface
 using TreeRecipe
