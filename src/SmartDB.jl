@@ -79,28 +79,7 @@ function smartfeatures(df, alg_path)
 
     #Compute feature time-averaged importance
     fi = feature_importances(mach)
-    #------------------------------------------------------------------------------
-    # #NEW
-    # fit!(mach)
 
-    # function predict_function(model, data)
-    #     data_pred = DataFrame(y_pred=predict(model, data))
-    #     return data_pred
-    # end
-    # println(df[1:50, :])
-    # println(df[1:50, fs])
-    # # explain = copy(df[1:300, :]) #may have to edit how many/what instances
-    # # explain = select(df, Not(Symbol(outcome_name)))
-
-    # data_shap = ShapML.shap(explain=df[1:50, fs],
-    #     reference=df[:, fs],
-    #     model=mach,
-    #     predict_function=predict_function)
-
-    # show(data_shap, allcols=true)
-
-    # fi = combine(groupby(data_shap, :feature_name))[:, [:feature_name, :shap_effect]]
-    #------------------------------------------------------------------------------
     fil = map(x->x[1], fi)
     fiv = map(x->x[2], fi)
 
