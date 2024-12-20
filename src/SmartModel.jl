@@ -31,7 +31,7 @@ function train_smart_choice_model(features_train, labels_train, features)
     fs_vals = [features_train[:, f] for f in features]
     X = NamedTuple{Tuple(features)}(fs_vals)
     y = CategoricalArray(String.(labels_train))
-    mach = machine(model, X, y) |> fit!
+    mach = machine(model, X, y) |> MLJ.fit!
     return mach
 end
 

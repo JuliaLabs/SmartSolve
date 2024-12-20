@@ -5,6 +5,8 @@ using LinearAlgebra
 using DataFrames
 using OrderedCollections
 using CSV
+using CairoMakie
+using DecisionTree
 using PlotlyJS
 using Plots
 using Random
