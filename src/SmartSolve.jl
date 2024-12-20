@@ -7,10 +7,19 @@ using OrderedCollections
 using CSV
 using CairoMakie
 using DecisionTree
+using PlotlyJS
+using Plots
 using Random
 using BenchmarkTools
 using BSON
+
+# using ShapML
+using MLJ
+using MLJDecisionTreeInterface
+using TreeRecipe
+using CategoricalArrays
 using SparseArrays
+using ColorSchemes
 
 include("SmartDiscovery.jl")
 include("SmartDB.jl")

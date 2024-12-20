@@ -10,22 +10,23 @@ function smartsolve(alg_path, alg_name, algs;
 		    error_calc = nothing)
 
     # Create result directory
-    run(`mkdir -p $alg_path`)
+    mkpath("$alg_path")
 
     # Save algorithms
     BSON.@save "$alg_path/algs-$alg_name.bson" algs
-    
+
     # Define matrices
     max_entries = 10_000
     bi_patterns = mdlist(:builtin)
     sp_patterns = mdlist(sp(:) & @pred(n*m < max_entries))
     mm_patterns = mdlist(mm(:) & @pred(n*m < max_entries))
 
-    filter!(x -> x != "parallax", bi_patterns) 
+    filter!(x -> x != "parallax", bi_patterns)
     filter!(x -> x != "invhilb", bi_patterns)
     filter!(x -> x != "neumann", bi_patterns) # Created out of memory exception
     filter!(x -> x != "clement", bi_patterns)
     filter!(x -> x != "wathen", bi_patterns)
+    filter!(x -> x != "tridiag", bi_patterns)
 
     # Smart discovery: generate smart discovery database
     fulldb = create_empty_db()
@@ -44,15 +45,15 @@ function smartsolve(alg_path, alg_name, algs;
     CSV.write("$alg_path/smartdb-$alg_name.csv", smartdb)
 
     # Smart model
-    features = [:length,  :sparsity, :condnumber]
-    features_train, labels_train, 
+    features = smartfeatures(smartdb, alg_path)
+    features_train, labels_train,
     features_test, labels_test = create_datasets(smartdb, features)
-    smartmodel = train_smart_choice_model(features_train, labels_train)    
+    smartmodel = train_smart_choice_model(features_train, labels_train, features)
     BSON.@save "$alg_path/features-$alg_name.bson" features
     BSON.@save "$alg_path/smartmodel-$alg_name.bson" smartmodel
 
-    test_smart_choice_model(smartmodel, features_test, labels_test)
-    print_tree(smartmodel, 5) # Print of the tree, to a depth of 5 nodes
+    test_smart_choice_model(smartmodel, features_test, labels_test, features)
+    # print_tree(smartmodel, 5) # Print of the tree, to a depth of 5 nodes
 
     # Smart algorithm
     smartalg = """
@@ -62,8 +63,13 @@ function smartsolve(alg_path, alg_name, algs;
     function smart$alg_name(A; features = features_$alg_name,
             smartmodel = smartmodel_$alg_name,
             algs = algs_$alg_name)
-        fs = compute_feature_values(A; features = features)
-        alg_name = apply_tree(smartmodel, fs)
+        # fs = compute_feature_values(A; features = features)
+        # alg_name = apply_tree(smartmodel, fs)
+        # return @eval \$(Symbol(alg_name))(A)
+        fs_vals = compute_feature_values(A; features = features)
+        fs_vals = [[f] for f in fs_vals]
+        fs = NamedTuple{Tuple(features)}(Array(fs_vals))
+        alg_name = first(MLJ.predict_mode(smartmodel, fs))
         return @eval \$(Symbol(alg_name))(A)
     end"""
 
@@ -101,7 +107,7 @@ end
 
 
 function discover!(i, db, mat_patterns, algs, include_singular, error_calc, index; ns = [0])
-    for (j, mat_pattern) in enumerate(mat_patterns)    
+    for (j, mat_pattern) in enumerate(mat_patterns)
         for n in ns
 	    if n == 0
             	println("Experiment:$i, Subexperiment:$index, pattern:$mat_pattern.")

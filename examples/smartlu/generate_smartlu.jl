@@ -17,6 +17,7 @@ using MatrixDepot
 using BenchmarkTools
 using DecisionTree
 using BSON
+using MLJ
 
 import SmartSolve: compute_feature_values
 
@@ -56,7 +57,7 @@ mats = [A, B]
 # Generate a smart version of your algorithm
 alg_name  = "lu"
 alg_path = "smart$alg_name/"
-smartsolve(alg_path, alg_name, algs; n_experiments = 3,
+smartsolve(alg_path, alg_name, algs; n_experiments = 1,
            mats = mats, ns = [2^4, 2^8])
 
 # Include the newly generated algorithm
@@ -90,4 +91,3 @@ norm(A * x - b, 1)
 
 # Plot results
 makeplots(alg_path, alg_name)
-
