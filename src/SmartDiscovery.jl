@@ -33,7 +33,7 @@ function smartsolve(alg_path, alg_name, algs;
     	index = 1
         index = discover!(i, fulldb, bi_patterns, algs, true, error_calc, index; ns = ns)
         index = discover!(i, fulldb, sp_patterns, algs, include_singular, error_calc, index)
-	index = discover!(i, fulldb, mm_patterns, algs, include_singular, error_calc, index)
+	    index = discover!(i, fulldb, mm_patterns, algs, include_singular, error_calc, index)
     end
     CSV.write("$alg_path/fulldb-$alg_name.csv", fulldb)
 
@@ -125,16 +125,37 @@ function discover!(i, db, mat_patterns, algs, include_singular, error_calc, inde
                 if alg_name != "umfpack" && size(A, 1) != size(A, 2) # if the algorithm isn't umfpack, then don't run the algorithm if the matrix isn't square
                     continue
                 end
+                if count(iszero, A) / length(A) < 0.5 && alg_name == "splu" # If sparsity less than 0.5, don't run splu
+                    continue
+                end
                 try
-                    t = @elapsed res = alg(A)
-		    if error_calc == nothing
-			err = default_error_calc(alg, A)
-		    else
-                        err = error_calc(alg, A)
-		    end
-                    row = vcat([i, mat_pattern],
-                            features,
-                            [alg_name, t, err])
+                    # Performs all of the castings
+                    if alg_name == "dgetrf"
+                        if typeof(A) <: SparseMatrixCSC
+                            t_cast = @elapsed A = Matrix(A)
+                        elseif typeof(A) <: SparseMatrixCSC{Bool, Int64}
+                            t_cast = @elapsed A = Matrix(A)
+                        elseif typeof(A) <: Symmetric
+                            t_cast = @elapsed A = A.data
+                        else
+                            t_cast = 0
+                        end
+                    else
+                        if typeof(A) <: Matrix
+                            t_cast = @elapsed A = sparse(A)
+                        elseif typeof(A) <: SparseMatrixCSC{Bool, Int64}
+                            t_cast = @elapsed A = Float64.(A)
+                        elseif typeof(A) <: SparseMatrixCSC{Int64, Int64}
+                            t_cast = @elapsed A = Float64.(A)
+                        elseif typeof(A) <: Symmetric
+                            t_cast = @elapsed A = A.data
+                        else
+                            t_cast = 0
+                        end
+                    end
+                    t_calc = @elapsed res = alg(A)
+                                    err = default_error_calc(alg, A)
+                    row = vcat([i, mat_pattern], features, [alg_name, t_cast, t_calc, err])
                     push!(db, row)
                 catch e
                     if n == 0
@@ -143,8 +164,8 @@ function discover!(i, db, mat_patterns, algs, include_singular, error_calc, inde
                         println("Error: $(mat_pattern), $n, $alg_name", typeof(e))
                     end
                 end
-            	GC.gc()
-	    end
+                GC.gc()
+            end
         end
     end
     return index

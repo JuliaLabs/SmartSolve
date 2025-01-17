@@ -1,119 +1,111 @@
 export makeplots, plot_benchmark
 
-function makeplots(alg_path, alg_name)
+function makeplots(alg_path, alg_name; tick_label_size=30, label_size=36, title_size=48)
     smartdb = CSV.read("$alg_path/smartdb-$alg_name.csv", DataFrame)
     fulldb = CSV.read("$alg_path/fulldb-$alg_name.csv", DataFrame)
     pattern_list = unique(smartdb[!, :pattern])
     for pattern in pattern_list
-        rows = fulldb[fulldb[!, :pattern] .== pattern, :]
-        ns = unique(rows[:, [:n_rows, :n_cols]])
-        plot_benchmark(alg_path, alg_name, rows, ns, pattern, "log")
+        df = fulldb[fulldb[!, :pattern] .== pattern, :]
+        ns = unique(df[:, [:n_rows, :n_cols]])
+        for n in eachrow(ns)
+            num_rows = n.n_rows
+            num_cols = n.n_cols
+            values = df[(df[!, :n_rows] .== num_rows) .&& (df[!, :n_cols] .== num_cols), :];
+            plot_benchmark(alg_path, alg_name, values, num_rows, num_cols, pattern)
+        end
     end
 end
 
-function plot_benchmark(alg_path, alg_name, df, ns, mat_pattern, yaxis_type)
+function plot_benchmark(alg_path, alg_name, df, num_rows, num_cols, mat_pattern; tick_label_size=30, label_size=36, title_size=48)
     # Initialize figure and variables
     f = Figure(backgroundcolor = RGBf(0.98, 0.98, 0.98),
-           size = (1200, 800),
-           title = "$(alg_name) Decomposition Algorithm for $(mat_pattern)",
-           figure_padding = 40)
+           size = (2400, 800),
+           title = "$(uppercase(alg_name)) Decomposition Algorithm for $(mat_pattern): $(num_rows) x $(num_cols)",
+           figure_padding = (40, 80, 10, 10))
     num_experiments = unique(df[:, :n_experiment])
-    num_subplots = nrow(ns)
-    bar_width = 0.5
-    gap = 0.6
-    graphs = []
-    labels = []
-    label_names = []
-    row_index = 1
-    col_index = 1
-    num_sub_horiz = ceil(Int, sqrt(num_subplots+1))
     # Add more colors if the size of the ns array is larger
     colors = [(:teal, 1.0),
-              (:teal, 0.4),
               (:darkgreen, 1.0),
-              (:darkgreen, 0.4),
               (:darkred, 1.0),
-              (:darkred, 0.4)]
-    # Iterate through each matrix size and create the graphs
-    for (index, row) in enumerate(eachrow(ns))
-        num_rows = row.n_rows
-        num_cols = row.n_cols
-        # Obtain values from dataframe for particular matrix size
-        values = df[(df[!, :n_rows] .== num_rows) .&& (df[!, :n_cols] .== num_cols), :];
-        algorithms = unique(values.algorithm)
-        alg_time_means = []
-        alg_error_means = []
-        alg_time_stds = []
-        alg_error_stds = []
-        # Obtain means and standard deviation for each algorithm
-        for alg in algorithms
-            push!(alg_time_means, mean(values[values.algorithm .== alg, :time]))
-            push!(alg_time_stds, min(std(values[values.algorithm .== alg, :time]), alg_time_means[end]))
-            push!(alg_error_means, mean(values[values.algorithm .== alg, :error]))
-            push!(alg_error_stds, min(std(values[values.algorithm .== alg, :error]), alg_error_means[end]))
+              (:purple, 1.0)]
+    shapes = [
+        :circle,
+        :diamond,
+        :cross,
+        :star5
+    ]
+
+    # Get all the algorithms
+    algorithms = unique(df.algorithm)
+    num_algs = length(algorithms)
+    cast_time_means = []
+    cast_time_stds = []
+    alg_time_means = []
+    alg_time_means = []
+    alg_error_means = []
+    alg_time_stds = []
+    alg_error_stds = []
+
+    # Obtain means and standard deviation for each algorithm
+    for alg in algorithms
+        push!(cast_time_means, mean(df[df.algorithm .== alg, :cast_time]))
+        push!(cast_time_stds, min(std(df[df.algorithm .== alg, :cast_time]), cast_time_means[end]))
+        push!(alg_time_means, mean(df[df.algorithm .== alg, :calc_time]))
+        push!(alg_time_stds, min(std(df[df.algorithm .== alg, :calc_time]), alg_time_means[end]))
+        push!(alg_error_means, mean(df[df.algorithm .== alg, :error]))
+        push!(alg_error_stds, min(std(df[df.algorithm .== alg, :error]), alg_error_means[end]))
+        # Remove error bars if they go negative
+        if cast_time_stds[length(cast_time_stds)] >= cast_time_means[length(cast_time_means)]
+            cast_time_stds[length(cast_time_stds)] = 0
         end
-        num_algs = length(algorithms)
-        x_vals = 1:num_algs .+ gap
-        # Set up graph axes for both y axes
-        ax = Axis(
-            f[row_index, col_index],
-            xticks = (x_vals .+ bar_width/2, collect(algorithms)),
-            ylabel = "Time [s]",
-            xticklabelspace = 0.2,
-            ygridvisible = false,
-            xgridvisible = false,
-            ylabelsize = 24,
-            xticklabelsize = 20,
-            yticklabelsize = 18
-        )
-        ax2 = Axis(
-            f[row_index, col_index], 
-            ylabel = "Errors", 
-            yaxisposition = :right,
-            ygridvisible = false,
-            ylabelsize = 24,
-            yticklabelsize = 18,
-            yscale = log10
-        )
-        hidespines!(ax2)
-        hidexdecorations!(ax2)
-        linkxaxes!(ax, ax2)
-        # Set colors
-        time_bar_colors = fill(colors[index*2-1], num_algs)
-        error_bar_colors = fill(colors[index*2], num_algs)
-        # Add graphs, labels, and errorbars
-        push!(graphs, barplot!(ax, x_vals, alg_time_means, width = bar_width, color = time_bar_colors))
-        push!(graphs, barplot!(ax2, x_vals .+ bar_width, alg_error_means, width = bar_width, color = error_bar_colors))
-        errorbars!(ax, x_vals, alg_time_means, alg_time_stds, color = :black, linewidth = 3, whiskerwidth = 8)
-        errorbars!(ax2, x_vals .+ bar_width, alg_error_means, alg_error_stds, color = :black, linewidth = 3, whiskerwidth = 8)
-        push!(label_names, "$(mat_pattern): $(num_rows) x $(num_cols) Times")
-        push!(label_names, "$(mat_pattern): $(num_rows) x $(num_cols) Errors")
-        push!(labels, MarkerElement(color = colors[index*2-1], marker = :rect, markersize = 20,
-            strokecolor = :black))
-        push!(labels, MarkerElement(color = colors[index*2], marker = :rect, markersize = 20,
-            strokecolor = :black))
-        # Update col and row locations
-        if (col_index == num_sub_horiz-1 && row_index == 1)
-            row_index = 2
-            col_index = 1
-        elseif (col_index == num_sub_horiz)
-            row_index += 1
-            col_index = 1
-        else
-            col_index += 1
+        if alg_time_stds[length(alg_time_stds)] >= alg_time_means[length(alg_time_means)]
+            alg_time_stds[length(alg_time_stds)] = 0
+        end
+        if alg_error_stds[length(alg_error_stds)] >= alg_error_means[length(alg_error_means)]
+            alg_error_stds[length(alg_error_stds)] = 0
         end
     end
-    colgap!(f.layout, Relative(0.05))
-    rowgap!(f.layout, Relative(0.05))
-    # Create legend, title, and save graphs
-    leg = Legend(f[1, num_sub_horiz], labels, label_names, title = "Legend", labelsize = 20)
-    leg.tellwidth = false
-    Label(f[1, 1:num_sub_horiz, Top()], 
-          "$(alg_name) Decomposition Algorithm for $(mat_pattern)", 
-          valign = :bottom,
-          font = :bold,
-          padding = (0, 0, 15, 0),
-          fontsize = 36)
+    max_x = maximum(alg_error_means+alg_error_stds)
+    max_y = maximum(alg_time_means+alg_time_stds)
+    min_y = minimum(alg_time_means-alg_time_stds)
+    max_cast = maximum(cast_time_means+cast_time_stds)
+
+    # If maximum error is 0, then all errors are the same. Set to arbitrary amount
+    if (max_x == 0)
+        max_x = 1
+    end
+
+    if isnan(max_x) || isnan(max_y)
+        return
+    end
+
+    # Create axis
+    ax1 = Axis(f[1, 1], yscale = log10, xlabel = "LU-based linear solution error", ylabel = "Calculation Time [s]",
+                xlabelsize = label_size, ylabelsize = label_size, xticklabelsize = tick_label_size, yticklabelsize = tick_label_size,
+                xtickformat = "{:.3e}", limits = (nothing, max_x*1.1, min_y*0.8, max_y*1.8))
+    ax2 = Axis(f[1, 2], xlabel = "LU-based linear solution error", ylabel = "Casting Time [s]",
+                xlabelsize = label_size, ylabelsize = label_size, xticklabelsize = tick_label_size, yticklabelsize = tick_label_size,
+                xtickformat = "{:.3e}", ytickformat = "{:.3e}", limits = (nothing, max_x*1.1, -10^(-15)-1*max_cast*0.2, max_cast*1.2+10^(-15)))
+
+    # Plot results
+    scatter!(ax1, alg_error_means, alg_time_means, marker = shapes[1:length(alg_time_means)], markersize = tick_label_size, color = colors[1:length(alg_time_means)])
+    errorbars!(ax1, alg_error_means, alg_time_means, alg_error_stds, color = colors[1:length(alg_time_means)], direction = :x, whiskerwidth = 10, linewidth = 3)
+    errorbars!(ax1, alg_error_means, alg_time_means, alg_time_stds, color = colors[1:length(alg_time_means)], direction = :y, whiskerwidth = 10, linewidth = 3)
+    foreach(i -> text!(ax1, position=(alg_error_means[i], alg_time_means[i]), fontsize=tick_label_size, rotation=0.5, align = (:left, :baseline), "   $(algorithms[i])"), 1:num_algs)
+
+    scatter!(ax2, alg_error_means, cast_time_means, marker = shapes[1:length(cast_time_means)], markersize = tick_label_size, color = colors[1:length(cast_time_means)])
+    errorbars!(ax2, alg_error_means, cast_time_means, alg_error_stds, color = colors[1:length(cast_time_means)], direction = :x, whiskerwidth = 10, linewidth = 3)
+    errorbars!(ax2, alg_error_means, cast_time_means, cast_time_stds, color = colors[1:length(cast_time_means)], direction = :y, whiskerwidth = 10, linewidth = 3)
+    foreach(i -> text!(ax2, position=(alg_error_means[i], cast_time_means[i]), fontsize=tick_label_size, rotation=0.5, align = (:left, :baseline), "   $(algorithms[i])"), 1:num_algs)
+
+    # Create Title Label
+    Label(f[1, 1:2, Top()], "$(uppercase(alg_name)) Decomposition Algorithm for $(mat_pattern): $(num_rows) x $(num_cols)", valign = :bottom, font = :bold, padding = (0, 0, 50, 0), fontsize = title_size)
+
+    # Fix Margin/Spacing Issues
+
+    Box(f[1, 1, Right()], width = 50, strokecolor = RGBAf(0.98, 0.98, 0.98, 0), color = RGBf(0.98, 0.98, 0.98))
+
+    # Save figure
     mat_pattern = split(mat_pattern, "/")[end]
-    save("$(alg_path)/$(alg_name)_$(mat_pattern).png", f)
+    save("$(alg_path)/$(alg_name)_$(mat_pattern)_$(num_rows) x $(num_cols).png", f)
 end
