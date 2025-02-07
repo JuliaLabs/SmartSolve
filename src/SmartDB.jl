@@ -42,7 +42,8 @@ function create_empty_db()
     column_types = map(typeof, values(features))
     df2 = DataFrame(OrderedDict(k => T[] for (k, T) in zip(column_names, column_types)))
     df3 = DataFrame(algorithm = String[],
-                    time = Float64[],
+                    cast_time = Float64[],
+                    calc_time = Float64[],
                     error = Float64[])
     return hcat(df1, df2, df3)
 end
@@ -57,9 +58,9 @@ function get_smart_choices(db, mat_patterns, ns)
 		db_filtered = @views db[(db.pattern .== mat_pattern) .&&
                             (db.n_cols .== n), :]
             end
-	    if length(db_filtered.time) > 0
-                min_time = minimum(db_filtered.time)
-                min_time_row = db_filtered[db_filtered.time .== min_time, :][1, :]
+	    if length(db_filtered.calc_time) > 0
+                min_time = minimum(db_filtered.calc_time)
+                min_time_row = db_filtered[db_filtered.calc_time .== min_time, :][1, :]
                 push!(db_opt, min_time_row)
             end
         end

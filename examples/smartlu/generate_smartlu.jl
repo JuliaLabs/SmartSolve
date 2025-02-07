@@ -29,22 +29,21 @@ BLAS.get_config()
 
 # Define candidate algorithms
 dgetrf(A::Matrix) = lu(A)
-dgetrf(A::Matrix) = lu(A)
-dgetrf(A::SparseMatrixCSC) = lu(Matrix(A))
-dgetrf(A::SparseMatrixCSC{Bool, Int64}) = lu(Matrix(A)) # Added this Line to account for MM matrices
-dgetrf(A::Symmetric) = lu(A.data) # Added symmetric MM matrix
-umfpack(A::Matrix) = lu(sparse(A))
+# dgetrf(A::SparseMatrixCSC) = lu(Matrix(A))
+# dgetrf(A::SparseMatrixCSC{Bool, Int64}) = lu(Matrix(A)) # Added this Line to account for MM matrices
+# dgetrf(A::Symmetric) = lu(A.data) # Added symmetric MM matrix
+# umfpack(A::Matrix) = lu(sparse(A))
 umfpack(A::SparseMatrixCSC) = lu(A)
-umfpack(A::SparseMatrixCSC{Bool, Int64}) = lu(Matrix(A)) # Added this Line to account for MM matrices
-umfpack(A::Symmetric) = lu(A.data) # Added symmetric MM matrix
-KLU.klu(A::Matrix) = klu(sparse(A)) # Add appropriate lines for klu and splu algorithms
-KLU.klu(A::SparseMatrixCSC{Int64, Int64}) = klu(Float64.(A))
-KLU.klu(A::SparseMatrixCSC{Bool, Int64}) = klu(Float64.(A))# Added symmetric MM matrix, Float64. because of boolean
-KLU.klu(A::Symmetric) = klu(Float64.(sparse(A.data))) # Added symmetric MM matrix
-SuperLU.splu(A::Matrix) = splu(sparse(A))
-SuperLU.splu(A::SparseMatrixCSC{Int64, Int64}) = splu(Float64.(A))
-SuperLU.splu(A::SparseMatrixCSC{Bool, Int64}) = splu(Float64.(A))
-SuperLU.splu(A::Symmetric) = splu(Float64.(sparse(A.data)))
+# umfpack(A::SparseMatrixCSC{Bool, Int64}) = lu(Matrix(A)) # Added this Line to account for MM matrices
+# umfpack(A::Symmetric) = lu(A.data) # Added symmetric MM matrix
+# KLU.klu(A::Matrix) = klu(sparse(A)) # Add appropriate lines for klu and splu algorithms
+# KLU.klu(A::SparseMatrixCSC{Int64, Int64}) = klu(Float64.(A))
+# KLU.klu(A::SparseMatrixCSC{Bool, Int64}) = klu(Float64.(A))# Added symmetric MM matrix, Float64. because of boolean
+# KLU.klu(A::Symmetric) = klu(Float64.(sparse(A.data))) # Added symmetric MM matrix
+# SuperLU.splu(A::Matrix) = splu(sparse(A))
+# SuperLU.splu(A::SparseMatrixCSC{Int64, Int64}) = splu(Float64.(A))
+# SuperLU.splu(A::SparseMatrixCSC{Bool, Int64}) = splu(Float64.(A))
+# SuperLU.splu(A::Symmetric) = splu(Float64.(sparse(A.data)))
 algs = [dgetrf, umfpack, klu, splu]
 
 # Define your custom matrices to be included in training
@@ -89,5 +88,5 @@ x = smartlu(A) \ b;
 norm(A * x - b, 1)
 
 # Plot results
-makeplots(alg_path, alg_name)
+makeplots(alg_path, alg_name, tick_label_size=30, label_size=36, title_size=48)
 
