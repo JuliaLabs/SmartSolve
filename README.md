@@ -1,6 +1,7 @@
-# SmartSolve
 
-SmartSolve aims to significantly accelerate various linear algebra algorithms based on providing better algorithmic and architectural choices. 
+
+<img src="smartsolve.png" alt="SmartSolve.jl">
+
 
 
 ## How to start
