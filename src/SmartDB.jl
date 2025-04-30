@@ -52,13 +52,13 @@ function get_smart_choices(db, mat_patterns, ns)
     db_opt = create_empty_db()
     for mat_pattern in mat_patterns
         for n in ns
-	    if n == 0
-		db_filtered = @views db[(db.pattern .== mat_pattern), :]
+        if n == 0
+        db_filtered = @views db[(db.pattern .== mat_pattern), :]
             else
-		db_filtered = @views db[(db.pattern .== mat_pattern) .&&
+        db_filtered = @views db[(db.pattern .== mat_pattern) .&&
                             (db.n_cols .== n), :]
             end
-	    if length(db_filtered.calc_time) > 0
+        if length(db_filtered.calc_time) > 0
                 min_time = minimum(db_filtered.calc_time)
                 min_time_row = db_filtered[db_filtered.calc_time .== min_time, :][1, :]
                 push!(db_opt, min_time_row)

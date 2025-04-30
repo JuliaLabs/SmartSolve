@@ -46,7 +46,7 @@ SuperLU.splu(A::SparseMatrixCSC{Bool, Int64}) = splu(Float64.(A))
 SuperLU.splu(A::Symmetric) = splu(Float64.(sparse(A.data)))
 algs = [dgetrf, umfpack, klu, splu]
 
-# Define your custom matrices to be included in training
+# Define your custom matrices to be included in training (WIP)
 n = 2^12;
 A = rand(n, n)
 B = sprand(n, n, 0.3)
@@ -62,21 +62,21 @@ smartsolve(alg_path, alg_name, algs; n_experiments = 3,
 include("$alg_path/smart$alg_name.jl")
 
 # Benchmark classical vs smart algorithm
-n = 2^12;
+n = 2^8;
 benchmark_seconds = 2 # 200
 A = matrixdepot("poisson", round(Int, sqrt(n))); # nxn
-println("Benchmark Time for Regular LU Decomposition!")
+println("** Benchmark Time for Regular LU Decomposition")
 display(@benchmark lu($A) seconds=benchmark_seconds)
-println("Benchmark Time for Smart LU Decomposition!")
+println("** Benchmark Time for Smart LU Decomposition")
 display(@benchmark smartlu($A) seconds=benchmark_seconds)
 
 # Benchmark Backslash vs SmartBackslash (via SmartLU)
 b = rand(n);
-println("Benchmark Time for Backslash!")
+println("** Benchmark Time for Backslash")
 display(@benchmark $A\$b seconds=benchmark_seconds)
-println("Benchmark Time for LU Backslash!")
+println("** Benchmark Time for LU Backslash")
 display(@benchmark lu($A)\$b seconds=benchmark_seconds)
-println("Benchmark Time for SmartBackslash!")
+println("** Benchmark Time for SmartBackslash")
 display(@benchmark smartlu($A)\$b seconds=benchmark_seconds)
 
 # Compute errors
