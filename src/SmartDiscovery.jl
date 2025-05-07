@@ -6,8 +6,9 @@ function smartsolve(alg_path, alg_name, algs;
                     n_experiments = 1,
                     ns = [2^4, 2^8, 2^12],
                     mats = [],
-            include_singular = false,
-            error_calc = nothing)
+                    features = [:length,  :sparsity, :condnumber],
+                    include_singular = false,
+                    error_calc = nothing)
 
     # Create result directory
     run(`mkdir -p $alg_path`)
@@ -44,7 +45,6 @@ function smartsolve(alg_path, alg_name, algs;
     CSV.write("$alg_path/smartdb-$alg_name.csv", smartdb)
 
     # Smart model
-    features = [:length,  :sparsity, :condnumber]
     features_train, labels_train, 
     features_test, labels_test = create_datasets(smartdb, features)
     smartmodel = train_smart_choice_model(features_train, labels_train)    

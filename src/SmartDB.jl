@@ -1,5 +1,14 @@
 export compute_feature_values
 
+function isbandedpattern(A; upper=0, lower=0, bandwith=0.1)
+  if upper == 0 && lower == 0
+    m = floor(Int, size(A,1) * bandwith * 0.5)
+    upper = m
+    lower = m
+  end
+  return istriu(A,-upper) && istril(A,lower)
+end
+
 all_features = OrderedDict() 
 all_features[:length] = x -> length(x)
 all_features[:n_rows] = x -> size(x, 1)
@@ -13,6 +22,7 @@ all_features[:ishermitian] = x -> Float64(ishermitian(x))
 all_features[:isposdef] = x -> Float64(isposdef(x))
 all_features[:istriu] = x -> Float64(istriu(x))
 all_features[:istril] = x -> Float64(istril(x))
+all_features[:isbandedpattern] = x -> Float64(isbandedpattern(x))
 
 function compute_feature_dict(A; features = keys(all_features))
     feature_dict = OrderedDict()
