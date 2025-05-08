@@ -19,7 +19,7 @@ using BSON
 
 import SmartSolve: compute_feature_values
 
- OpenBLAS vs MKL
+# OpenBLAS vs MKL
 mkl = false
 if mkl
     using MKL
@@ -31,11 +31,10 @@ dgetrf(A::Matrix) = lu(A)
 dgetrf(A::SparseMatrixCSC) = lu(Matrix(A))
 dgetrf(A::SparseMatrixCSC{Bool, Int64}) = lu(Matrix(A))
 dgetrf(A::Symmetric) = lu(A.data)
-bandedlu(A) = BandedMatrices.lu(A)
-BandedMatrices.lu(A::Matrix) = lu(BandedMatrix(sparse(A)))
-BandedMatrices.lu(A::SparseMatrixCSC{Int64, Int64}) = lu(BandedMatrix(Float64.(A)))
-BandedMatrices.lu(A::SparseMatrixCSC{Bool, Int64}) = lu(BandedMatrix(Float64.(A)))
-BandedMatrices.lu(A::Symmetric) = lu(Float64.(BandedMatrix(sparse(A.data))))
+bandedlu(A::Matrix) = BandedMatrices.lu(BandedMatrix(sparse(A)))
+bandedlu(A::SparseMatrixCSC{Int64, Int64}) = BandedMatrices.lu(BandedMatrix(Float64.(A)))
+bandedlu(A::SparseMatrixCSC{Bool, Int64}) = BandedMatrices.lu(BandedMatrix(Float64.(A)))
+bandedlu(A::Symmetric) = BandedMatrices.lu(Float64.(BandedMatrix(sparse(A.data))))
 
 algs = [dgetrf, bandedlu]
 
