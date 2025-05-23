@@ -93,7 +93,7 @@ function generate_matrix(mat_pattern; n = 0)
                 throw("Check matrix size: $(mat_pattern), ($n, $n) vs $(size(A))")
             end
         catch e
-            println("Error: $(mat_pattern), $n", typeof(e))
+            println("Error: $(mat_pattern), $n, ", typeof(e))
         end
     end
     return convert.(Float64, A)
@@ -101,7 +101,7 @@ end
 
 
 function discover!(i, db, mat_patterns, algs, include_singular, error_calc, index; ns = [0])
-    for (j, mat_pattern) in enumerate(mat_patterns)    
+    for (j, mat_pattern) in enumerate(mat_patterns)
         for n in ns
         if n == 0
                 println("Experiment:$i, Subexperiment:$index, pattern:$mat_pattern.")
@@ -159,9 +159,9 @@ function discover!(i, db, mat_patterns, algs, include_singular, error_calc, inde
                     push!(db, row)
                 catch e
                     if n == 0
-                        println("Error: $(mat_pattern), $(size(A)), $alg_name", typeof(e))
+                        println("Error: $mat_pattern, $(size(A)), $(typeof(A)), $alg_name, ", typeof(e))
                     else
-                        println("Error: $(mat_pattern), $n, $alg_name", typeof(e))
+                        println("Error: $mat_pattern, $n, $(typeof(A)), $alg_name, ", typeof(e))
                     end
                 end
                 GC.gc()

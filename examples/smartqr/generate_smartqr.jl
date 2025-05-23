@@ -13,12 +13,12 @@ Pkg.activate(".")
 using SmartSolve
 using LinearAlgebra
 using SparseArrays
+using SparseMatricesCSR: SparseMatrixCSR
 using BandedMatrices
 using MatrixDepot
 using BenchmarkTools
 using DecisionTree
 using BSON
-using SparseMatricesCSR: SparseMatrixCSR
 
 import SmartSolve: compute_feature_values
 
@@ -32,11 +32,11 @@ BLAS.get_config()
 # Define candidate algorithms
 
 geqrt(A::Matrix) = LAPACK.geqrt!(A)[1]
-geqrt(A::SparseMatrixCSC) = LAPACK.geqrt!(Matrix(A))[1]
-geqrt(A::SparseMatrixCSC{Bool, Int64}) = LAPACK.geqrt!(Matrix(A))[1]
-geqrt(A::SparseMatrixCSR) = LAPACK.geqrt!(Matrix(A))[1]
-geqrt(A::SparseMatrixCSR{Bool, Int64}) = LAPACK.geqrt!(Matrix(A))[1]
-geqrt(A::Symmetric) = LAPACK.geqrt!(A.data)[1]
+geqrt(A::SparseMatrixCSC) = LAPACK.geqrt!(Matrix(A), size(A,2)÷2)[1]
+geqrt(A::SparseMatrixCSC{Bool, Int64}) = LAPACK.geqrt!(Matrix(A), size(A,2)÷2)[1]
+geqrt(A::SparseMatrixCSR) = LAPACK.geqrt!(Matrix(A), size(A,2)÷2)[1]
+geqrt(A::SparseMatrixCSR{Bool, Int64}) = LAPACK.geqrt!(Matrix(A), size(A,2)÷2)[1]
+geqrt(A::Symmetric) = LAPACK.geqrt!(A.data, size(A.data,2)÷2)[1]
 
 geqrt3(A::Matrix) = LAPACK.geqrt3!(A)[1]
 geqrt3(A::SparseMatrixCSC) = LAPACK.geqrt3!(Matrix(A))[1]
@@ -73,7 +73,8 @@ mats = [A, B]
 alg_name  = "qr"
 alg_path = "smart$alg_name/"
 smartsolve(alg_path, alg_name, algs; n_experiments = 1,
-           mats = mats, ns = [2^8], features = [:isbandedpattern], castings = [Matrix, SparseMatrixCSC])
+           mats = mats, ns = [2^8], features = [:isbandedpattern])
+#           mats = mats, ns = [2^8], features = [:isbandedpattern], castings = [Matrix, SparseMatrixCSC])
 
 # Include the newly generated algorithm
 include("$alg_path/smart$alg_name.jl")
