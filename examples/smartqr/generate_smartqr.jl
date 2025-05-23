@@ -18,7 +18,7 @@ using MatrixDepot
 using BenchmarkTools
 using DecisionTree
 using BSON
-# TODO: add missing dependencies
+using SparseMatricesCSR: SparseMatrixCSR
 
 import SmartSolve: compute_feature_values
 
@@ -31,17 +31,37 @@ BLAS.get_config()
 
 # Define candidate algorithms
 
-# TODO: add missing algorithms
-#dgetrf(A::Matrix) = lu(A)
-#dgetrf(A::SparseMatrixCSC) = lu(Matrix(A))
-#dgetrf(A::SparseMatrixCSC{Bool, Int64}) = lu(Matrix(A))
-#dgetrf(A::Symmetric) = lu(A.data)
-#bandedlu(A::Matrix) = BandedMatrices.lu(BandedMatrix(sparse(A)))
-#bandedlu(A::SparseMatrixCSC{Float64, Int64}) = BandedMatrices.lu(BandedMatrix(A))
-#bandedlu(A::SparseMatrixCSC{Int64, Int64}) = BandedMatrices.lu(BandedMatrix(Float64.(A)))
-#bandedlu(A::SparseMatrixCSC{Bool, Int64}) = BandedMatrices.lu(BandedMatrix(Float64.(A)))
-#bandedlu(A::Symmetric) = BandedMatrices.lu(Float64.(BandedMatrix(sparse(A.data))))
-#algs = [dgetrf, bandedlu]
+geqrt(A::Matrix) = LAPACK.geqrt!(A)[1]
+geqrt(A::SparseMatrixCSC) = LAPACK.geqrt!(Matrix(A))[1]
+geqrt(A::SparseMatrixCSC{Bool, Int64}) = LAPACK.geqrt!(Matrix(A))[1]
+geqrt(A::SparseMatrixCSR) = LAPACK.geqrt!(Matrix(A))[1]
+geqrt(A::SparseMatrixCSR{Bool, Int64}) = LAPACK.geqrt!(Matrix(A))[1]
+geqrt(A::Symmetric) = LAPACK.geqrt!(A.data)[1]
+
+geqrt3(A::Matrix) = LAPACK.geqrt3!(A)[1]
+geqrt3(A::SparseMatrixCSC) = LAPACK.geqrt3!(Matrix(A))[1]
+geqrt3(A::SparseMatrixCSC{Bool, Int64}) = LAPACK.geqrt3!(Matrix(A))[1]
+geqrt3(A::SparseMatrixCSR) = LAPACK.geqrt3!(Matrix(A))[1]
+geqrt3(A::SparseMatrixCSR{Bool, Int64}) = LAPACK.geqrt3!(Matrix(A))[1]
+geqrt3(A::Symmetric) = LAPACK.geqrt3!(A.data)[1]
+
+geqrf(A::Matrix) = LAPACK.geqrf!(A)[1]
+geqrf(A::SparseMatrixCSC) = LAPACK.geqrf!(Matrix(A))[1]
+geqrf(A::SparseMatrixCSC{Bool, Int64}) = LAPACK.geqrf!(Matrix(A))[1]
+geqrf(A::SparseMatrixCSR) = LAPACK.geqrf!(Matrix(A))[1]
+geqrf(A::SparseMatrixCSR{Bool, Int64}) = LAPACK.geqrf!(Matrix(A))[1]
+geqrf(A::Symmetric) = LAPACK.geqrf!(A.data)[1]
+
+bandedqr(A::Matrix) = BandedMatrices.banded_qr!(BandedMatrix(sparse(A)))
+bandedqr(A::SparseMatrixCSC{Float64, Int64}) = BandedMatrices.banded_qr!(BandedMatrix(A))
+bandedqr(A::SparseMatrixCSC{Int64, Int64}) = BandedMatrices.banded_qr!(BandedMatrix(Float64.(A)))
+bandedqr(A::SparseMatrixCSC{Bool, Int64}) = BandedMatrices.banded_qr!(BandedMatrix(Float64.(A)))
+bandedqr(A::SparseMatrixCSR{Float64, Int64}) = BandedMatrices.banded_qr!(BandedMatrix(A))
+bandedqr(A::SparseMatrixCSR{Int64, Int64}) = BandedMatrices.banded_qr!(BandedMatrix(Float64.(A)))
+bandedqr(A::SparseMatrixCSR{Bool, Int64}) = BandedMatrices.banded_qr!(BandedMatrix(Float64.(A)))
+bandedqr(A::Symmetric) = BandedMatrices.banded_qr!(Float64.(BandedMatrix(sparse(A.data))))
+
+algs = [geqrt, geqrt3, geqrf, bandedqr]
 
 # Define your custom matrices to be included in training (WIP)
 n = 2^12;
@@ -53,7 +73,7 @@ mats = [A, B]
 alg_name  = "qr"
 alg_path = "smart$alg_name/"
 smartsolve(alg_path, alg_name, algs; n_experiments = 1,
-           mats = mats, ns = [2^8], features = [:isbandedpattern])
+           mats = mats, ns = [2^8], features = [:isbandedpattern], castings = [Matrix, SparseMatrixCSC])
 
 # Include the newly generated algorithm
 include("$alg_path/smart$alg_name.jl")
