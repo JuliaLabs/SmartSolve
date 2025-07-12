@@ -27,6 +27,20 @@ julia> include("generate_smartlu.jl")
 - Rabab Alomairy, Felipe Tome, Julian Samaroo, Alan Edelman. _"Dynamic Task Scheduling with Data Dependency Awareness Using Julia"_, 2024 IEEE High Performance Extreme Computing Conference (HPEC) [(link)](https://ieeexplore.ieee.org/document/10938467).
 - SmartSolve article (in preparation)
 
+## How to Cite
+
+```bibtex
+@software{SmartSolve2025,
+  author       = {Lujan, Emmanuel and Shah, Rushil N. and Alomairy, Rabab and Edelman, Alan},
+  title        = {SmartSolve.jl: AI for Algorithmic Discovery},
+  month        = jul,
+  year         = 2025,
+  publisher    = {Zenodo},
+  version      = {0.1.0-alpha},
+  doi          = {10.5281/zenodo.15784217},
+  url          = {https://doi.org/10.5281/zenodo.15784217},
+}
+```
 
 ## Acknowledgements
 
