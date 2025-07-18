@@ -23,6 +23,7 @@ julia> include("generate_smartlu.jl")
 
 - Emmanuel Lujan and Alan Edelman. "When Structure is Silent: Opportunities for Algorithmic Dispatch in Linear Algebra," 2025 IEEE High Performance Extreme Computing Conference (HPEC). Submitted.
 - Rushil Shah, Emmanuel Lujan, and Rabab Alomairy, and Alan Edelman. "Data-Driven Dynamic Algorithm Dispatch with Large Language Models," 2025 IEEE High Performance Extreme Computing Conference (HPEC). Submitted.
+- Emmanuel Lujan, Rushil Shah, Rabab Alomairy, and Alan Edelman. "SmartSolve.jl: AI for Algorithmic Discovery," 0.1.0-alpha. Zenodo [(link)](https://doi.org/10.5281/zenodo.15784217).
 - Rabab Alomairy, Felipe Tome, Julian Samaroo, Alan Edelman. _"Dynamic Task Scheduling with Data Dependency Awareness Using Julia"_, 2024 IEEE High Performance Extreme Computing Conference (HPEC) [(link)](https://ieeexplore.ieee.org/document/10938467).
 
 ## Talks
